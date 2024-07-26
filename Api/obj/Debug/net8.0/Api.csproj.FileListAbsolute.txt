@@ -118,3 +118,4 @@
 /Users/kay/Documents/fraud/dotnet/Fraud/Api/bin/Debug/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
 /Users/kay/Documents/fraud/dotnet/Fraud/Api/bin/Debug/net8.0/Microsoft.IdentityModel.Protocols.dll
 /Users/kay/Documents/fraud/dotnet/Fraud/Api/bin/Debug/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+/Users/kay/Documents/fraud/dotnet/Fraud/Api/obj/Debug/net8.0/Api.sourcelink.json

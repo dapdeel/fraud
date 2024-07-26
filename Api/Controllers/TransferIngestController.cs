@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 
-public class TransferIngestController : ControllerBase{
-    
+[Route("api/[controller]")]
+[ApiController]
+public class TransferIngestController : ControllerBase
+{
+
 }

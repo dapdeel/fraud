@@ -1,10 +1,10 @@
-﻿using AuthApi.DTOs;
-using AuthApi.Interfaces;
+﻿using Api.DTOs;
+using Api.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace AuthApi.Controllers
+namespace Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

@@ -1,4 +1,4 @@
-﻿namespace AuthApi.Models
+﻿namespace Api.Models
 {
     using Microsoft.AspNetCore.Identity;
     using System;

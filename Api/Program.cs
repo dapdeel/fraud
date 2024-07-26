@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using AuthApi.Data;
-using AuthApi.Models;
-using AuthApi.Interfaces;
-using AuthApi.Services;
+using Api.Data;
+using Api.Models;
+using Api.Interfaces;
+using Api.Services;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -43,6 +43,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "Gremlin.Net": {
+              "target": "Package",
+              "version": "[3.7.2, )"
+            },
             "IdentityModel": {
               "target": "Package",
               "version": "[7.0.0, )"

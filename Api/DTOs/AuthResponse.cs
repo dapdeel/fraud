@@ -1,4 +1,4 @@
-﻿namespace AuthApi.DTOs
+﻿namespace Api.DTOs
 {
     using Microsoft.AspNetCore.Identity;
     using System.Collections.Generic;

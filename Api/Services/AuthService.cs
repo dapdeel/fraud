@@ -1,8 +1,8 @@
-﻿namespace AuthApi.Services
+﻿namespace Api.Services
 {
-    using AuthApi.DTOs;
-    using AuthApi.Interfaces;
-    using AuthApi.Models;
+    using Api.DTOs;
+    using Api.Interfaces;
+    using Api.Models;
     using Microsoft.AspNetCore.Identity;
     using Microsoft.Extensions.Configuration;
     using Microsoft.IdentityModel.Tokens;

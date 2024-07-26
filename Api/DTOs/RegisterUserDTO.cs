@@ -1,4 +1,4 @@
-﻿namespace AuthApi.DTOs
+﻿namespace Api.DTOs
 {
     public class RegisterUserDTO
     {

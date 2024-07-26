@@ -1,6 +1,6 @@
-﻿namespace AuthApi.Data
+﻿namespace Api.Data
 {
-    using AuthApi.Models;
+    using Api.Models;
     using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
     using Microsoft.EntityFrameworkCore;
 

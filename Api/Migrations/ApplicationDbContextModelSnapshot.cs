@@ -22,7 +22,7 @@ namespace Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("AuthApi.Models.ApplicationUser", b =>
+            modelBuilder.Entity("Api.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text");
@@ -65,7 +65,6 @@ namespace Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("RefreshToken")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("RefreshTokenExpiryTime")
@@ -91,6 +90,126 @@ namespace Api.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("Api.Models.Bank", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Banks");
+                });
+
+            modelBuilder.Entity("Api.Models.Observatory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BankId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("FrequencyCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FrequencyTimer")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("GraphDatabase")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GraphHost")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GraphPassword")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GraphUser")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsSetup")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Live")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("OddHourStartTime")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OddHourStopTime")
+                        .HasColumnType("integer");
+
+                    b.Property<float>("RiskAmount")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("UseDefault")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BankId");
+
+                    b.ToTable("Observatories");
+                });
+
+            modelBuilder.Entity("Api.Models.UserObservatory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ObservatoryId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ObservatoryId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserObservatories");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -225,6 +344,36 @@ namespace Api.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Api.Models.Observatory", b =>
+                {
+                    b.HasOne("Api.Models.Bank", "Bank")
+                        .WithMany("Observatories")
+                        .HasForeignKey("BankId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bank");
+                });
+
+            modelBuilder.Entity("Api.Models.UserObservatory", b =>
+                {
+                    b.HasOne("Api.Models.Observatory", "Observatory")
+                        .WithMany("UserObservatories")
+                        .HasForeignKey("ObservatoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Api.Models.ApplicationUser", "User")
+                        .WithMany("UserObservatories")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Observatory");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -236,7 +385,7 @@ namespace Api.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("AuthApi.Models.ApplicationUser", null)
+                    b.HasOne("Api.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -245,7 +394,7 @@ namespace Api.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("AuthApi.Models.ApplicationUser", null)
+                    b.HasOne("Api.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -260,7 +409,7 @@ namespace Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AuthApi.Models.ApplicationUser", null)
+                    b.HasOne("Api.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -269,11 +418,26 @@ namespace Api.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("AuthApi.Models.ApplicationUser", null)
+                    b.HasOne("Api.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Api.Models.ApplicationUser", b =>
+                {
+                    b.Navigation("UserObservatories");
+                });
+
+            modelBuilder.Entity("Api.Models.Bank", b =>
+                {
+                    b.Navigation("Observatories");
+                });
+
+            modelBuilder.Entity("Api.Models.Observatory", b =>
+                {
+                    b.Navigation("UserObservatories");
                 });
 #pragma warning restore 612, 618
         }

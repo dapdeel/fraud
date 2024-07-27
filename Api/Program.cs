@@ -20,8 +20,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
-    
-builder.Services.AddTransient<IGraphService, JanusService>();
+
+builder.Services.Configure<GraphConfig>(builder.Configuration.GetSection("Graph"));
+
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
@@ -53,6 +54,7 @@ builder.Services.AddSwaggerGen(c =>
 
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddTransient<IGraphService, JanusService>();
 
 var app = builder.Build();
 if (app.Environment.IsDevelopment())

@@ -5,7 +5,9 @@
 
     public class ApplicationUser : IdentityUser
     {
-        public string RefreshToken { get; set; }
+        public string? RefreshToken { get; set; }
         public DateTime RefreshTokenExpiryTime { get; set; }
+        public ICollection<Observatory> Observatories { get; } = [];
+        public ICollection<UserObservatory> UserObservatories { get; } = [];
     }
 }

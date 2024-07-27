@@ -1,10 +1,12 @@
 using Api.DTOs;
 using Api.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class TransferController : ControllerBase
 {
     private IGraphService _graphService;

@@ -12,8 +12,9 @@ using Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -57,6 +58,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddTransient<IGraphService, JanusService>();
 
 var app = builder.Build();
+
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

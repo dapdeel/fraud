@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Api.DTOs;
 using Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -24,5 +25,17 @@ public class TransferController : ControllerBase
             Message = "User registered successfully",
             Data = new { }
         });
+    }
+    [HttpGet("getUser")]
+    public async Task<IActionResult> GetUser(){
+
+         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId != null)
+        {
+            return Ok(new { UserId = userId });
+        }
+
+        return Unauthorized();
     }
 }

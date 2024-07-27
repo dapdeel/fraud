@@ -121,9 +121,10 @@
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                    new Claim(JwtRegisteredClaimNames.Sub, user.Id),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                    new Claim(ClaimTypes.NameIdentifier, user.Id)
+                    new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
+                     new Claim(JwtRegisteredClaimNames.Email, user.Email)
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(double.Parse(jwtSettings["ExpireMinutes"])),
                 Issuer = jwtSettings["Issuer"],

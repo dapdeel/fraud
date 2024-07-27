@@ -1,8 +1,8 @@
 using Api.Models;
 
 namespace Api.Services.Interfaces;
-public interface IObservatoryService{
+public interface IObservatoryService : IBaseService{
 
-    public abstract Observatory Add();
+    public abstract  Task<Observatory?> Add(ObservatoryRequest request, string UserId);
 
 }

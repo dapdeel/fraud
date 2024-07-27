@@ -53,8 +53,14 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
 });
 
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+    });
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IObservatoryService, ObservatoryService>();
 builder.Services.AddTransient<IGraphService, JanusService>();
 
 var app = builder.Build();

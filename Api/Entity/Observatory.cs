@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Api.Models;
 public class Observatory
 {
-    public int Id{get;set;}
+    public int Id { get; set; }
     [Required]
     public required string Currency { get; set; }
     public int FrequencyCount { get; set; }
@@ -26,11 +27,14 @@ public class Observatory
     public string? GraphUser { get; set; }
     public string? GraphPassword { get; set; }
     public int BankId { get; set; }
-    public required Bank Bank { get; set; }
+    public Bank? Bank { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    [JsonIgnore]
 
     public ICollection<ApplicationUser> Users { get; } = [];
+    [JsonIgnore]
+
     public ICollection<UserObservatory> UserObservatories { get; } = [];
 
 }

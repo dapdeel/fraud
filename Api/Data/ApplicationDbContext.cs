@@ -27,6 +27,12 @@
                 r => r.HasOne<Observatory>(uo => uo.Observatory).WithMany(o => o.UserObservatories).HasForeignKey(uo => uo.ObservatoryId)
             );
             modelBuilder.Entity<Observatory>().HasOne<Bank>(o => o.Bank).WithMany(b => b.Observatories).HasForeignKey(o => o.BankId);
+
+            modelBuilder.Entity<Observatory>().Property(u => u.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            modelBuilder.Entity<Observatory>().Property(u => u.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            modelBuilder.Entity<UserObservatory>().Property(u => u.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            modelBuilder.Entity<UserObservatory>().Property(u => u.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         }
     }
 }

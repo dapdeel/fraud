@@ -27,8 +27,9 @@
         public async Task<AuthResponse> RegisterAsync(RegisterUserDTO model)
         {
             var user = new ApplicationUser
-            {
-                UserName = model.Username,
+            {UserName = model.Email,
+                Firstname = model.Firstname,
+                Lastname = model.Lastname,
                 Email = model.Email,
                 RefreshToken = GenerateRefreshToken(),
                 RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)

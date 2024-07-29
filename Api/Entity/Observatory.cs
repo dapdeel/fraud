@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace Api.Models;
 public class Observatory
@@ -31,7 +31,6 @@ public class Observatory
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     [JsonIgnore]
-
     public ICollection<ApplicationUser> Users { get; } = [];
     [JsonIgnore]
 

@@ -30,7 +30,30 @@ public class ObservatoryController : ControllerBase
                 Data = new { response }
             });
         }
-        catch (CustomServiceException Exception)
+        catch (ValidateErrorException Exception)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = Exception.Message },
+                Message = Exception.Message
+            });
+        }
+    }
+    [HttpGet("Get/{Id}")]
+    public async Task<IActionResult> Get(int id)
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var response = await _service.Get(id, userId);
+            return Ok(new ApiResponse<dynamic>
+            {
+                Status = "success",
+                Data = response
+            });
+        }
+        catch (ValidateErrorException Exception)
         {
             return BadRequest(new ApiResponse<dynamic>
             {

@@ -11,14 +11,18 @@ using Microsoft.AspNetCore.Mvc;
 public class TransferController : ControllerBase
 {
     private IGraphService _graphService;
-    public TransferController(IGraphService graphService)
+    private ITransferService _transerService;
+    public TransferController(IGraphService graphService, ITransferService transferService)
     {
         _graphService = graphService;
+        _transerService = transferService;
     }
     [HttpPost("ingest")]
-    public async Task<IActionResult> Ingest()
+    public async Task<IActionResult> Ingest(TransactionTransferRequest request)
     {
-        var response = _graphService.connect();
+        var response = await _transerService.Ingest(request);
+        // var response = _graphService.connect();
+
         return Ok(new ApiResponse<object>
         {
             Status = "success",
@@ -27,9 +31,10 @@ public class TransferController : ControllerBase
         });
     }
     [HttpGet("getUser")]
-    public async Task<IActionResult> GetUser(){
+    public async Task<IActionResult> GetUser()
+    {
 
-         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (userId != null)
         {

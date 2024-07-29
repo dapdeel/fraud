@@ -61,6 +61,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IObservatoryService, ObservatoryService>();
+builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddTransient<IGraphService, JanusService>();
 
 var app = builder.Build();

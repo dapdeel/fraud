@@ -17,12 +17,12 @@ public class ObservatoryService : IObservatoryService
         var errors = ValidateObservatory(request);
         if (errors.Count > 0)
         {
-            throw new CustomServiceException(string.Join(", ", errors));
+            throw new ValidateErrorException(string.Join(", ", errors));
         }
         var User = await _context.Users.FindAsync(UserId);
         if (User == null)
         {
-            throw new CustomServiceException("Could not Find User");
+            throw new ValidateErrorException("Could not Find User");
         }
         Observatory Observatory = new Observatory
         {
@@ -31,6 +31,7 @@ public class ObservatoryService : IObservatoryService
             FrequencyCount = request.FrequencyCount,
             FrequencyTimer = request.FrequencyTimer,
             IsSetup = false,
+            UseDefault = request.UseDefault,
             Live = false,
             Name = request.Name,
             RiskAmount = request.RiskAmount,
@@ -65,5 +66,19 @@ public class ObservatoryService : IObservatoryService
     public List<string> Errors()
     {
         throw new NotImplementedException();
+    }
+
+    public async Task<Observatory?> Get(int id, string userId)
+    {
+        var UserObservatory = _context.UserObservatories
+        .Where(uo => uo.ObservatoryId == id && uo.UserId == userId && uo.Status == Status.Member)
+        .FirstOrDefault();
+        if (UserObservatory == null)
+        {
+            throw new ValidateErrorException("You do not have access to this Observatory, please contact your admin");
+        }
+        var Observatory = await _context.Observatories.FindAsync(id);
+        return Observatory;
+
     }
 }

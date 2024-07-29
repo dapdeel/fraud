@@ -6,19 +6,19 @@ using static Gremlin.Net.Process.Traversal.AnonymousTraversalSource;
 
 public class JanusService : IGraphService
 {
+    public static readonly string CustomerNode = "Customer";
+    public static readonly string AccountNode = "Account";
 
     private GraphConfig _graphConfig;
-    private readonly IConfiguration _configuration;
     public JanusService(IOptions<GraphConfig> configuration)
     {
         _graphConfig = configuration.Value;
     }
     public Gremlin.Net.Process.Traversal.GraphTraversalSource connect()
     {
-
         var Client = new GremlinClient(new GremlinServer(_graphConfig.Host, 8182));
         var g = Traversal().WithRemote(new DriverRemoteConnection(Client));
         return g;
-
     }
+
 }

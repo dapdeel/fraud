@@ -19,7 +19,7 @@ public class ObservatoryRequest
     [Required]
     [Range(10, int.MaxValue, ErrorMessage = "At what threshold are you bothered?, Minimum is 10")]
     public float RiskAmount { get; set; }
-
+    public bool UseDefault { get; set; }
     [Required]
     [Range(0, 23, ErrorMessage = "Please specify Odd Hour Start Time")]
     public int OddHourStartTime { get; set; }

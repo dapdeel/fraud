@@ -11,11 +11,13 @@ using Microsoft.AspNetCore.Mvc;
 [Authorize]
 public class ObservatoryController : ControllerBase
 {
-    private IObservatoryService _service;
+    private readonly IObservatoryService _service;
+
     public ObservatoryController(IObservatoryService service)
     {
         _service = service;
     }
+
     [HttpPost("Add")]
     public async Task<IActionResult> Add([FromBody] ObservatoryRequest request)
     {
@@ -26,7 +28,7 @@ public class ObservatoryController : ControllerBase
             return Ok(new ApiResponse<dynamic>
             {
                 Status = "success",
-                Message = "Observatory Created Successfully",
+                Message = "Observatory created successfully",
                 Data = new { response }
             });
         }
@@ -65,25 +67,50 @@ public class ObservatoryController : ControllerBase
     }
 
     [HttpPost("Invite")]
-    public async Task<IActionResult> Invite([FromBody] ObservatoryRequest request)
+    public async Task<IActionResult> Invite([FromBody] InvitationRequest request)
     {
-        var response = _service.Add(request, "");
-        return Ok(new ApiResponse<object>
+        try
         {
-            Status = "success",
-            Message = "User registered successfully",
-            Data = new { }
-        });
+            await _service.Invite(request);
+            return Ok(new ApiResponse<object>
+            {
+                Status = "success",
+                Message = "Invitation sent successfully",
+                Data = new { }
+            });
+        }
+        catch (CustomServiceException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
     }
+
     [HttpPost("Accept/{id}")]
-    public async Task<IActionResult> Accept(string id)
+    public async Task<IActionResult> Accept(int id)
     {
-        var response = _service.Errors();
-        return Ok(new ApiResponse<object>
+        try
         {
-            Status = "success",
-            Message = "User registered successfully",
-            Data = new { }
-        });
+            await _service.AcceptInvite(id);
+            return Ok(new ApiResponse<object>
+            {
+                Status = "success",
+                Message = "Invitation accepted successfully",
+                Data = new { }
+            });
+        }
+        catch (CustomServiceException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
     }
 }

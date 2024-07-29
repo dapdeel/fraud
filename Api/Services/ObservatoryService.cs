@@ -58,13 +58,13 @@ public class ObservatoryService : IObservatoryService
         var user = await _context.Users.FindAsync(request.UserId);
         if (user == null)
         {
-            throw new CustomServiceException("User not found");
+            throw new ValidateErrorException("User not found");
         }
 
         var observatory = await _context.Observatories.FindAsync(request.ObservatoryId);
         if (observatory == null)
         {
-            throw new CustomServiceException("Observatory not found");
+            throw new ValidateErrorException("Observatory not found");
         }
 
         UserObservatory userObservatory = new UserObservatory
@@ -86,12 +86,12 @@ public class ObservatoryService : IObservatoryService
         var userObservatory = await _context.UserObservatories.FindAsync(userObservatoryId);
         if (userObservatory == null)
         {
-            throw new CustomServiceException("Invitation not found");
+            throw new ValidateErrorException("Invitation not found");
         }
 
         if (userObservatory.Status == Status.Member)
         {
-            throw new CustomServiceException("User is already a member");
+            throw new ValidateErrorException("User is already a member");
         }
 
         userObservatory.Status = Status.Member;

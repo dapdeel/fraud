@@ -79,7 +79,7 @@ public class ObservatoryController : ControllerBase
                 Data = new { }
             });
         }
-        catch (CustomServiceException ex)
+        catch (ValidateErrorException ex)
         {
             return BadRequest(new ApiResponse<dynamic>
             {
@@ -103,7 +103,7 @@ public class ObservatoryController : ControllerBase
                 Data = new { }
             });
         }
-        catch (CustomServiceException ex)
+        catch (ValidateErrorException ex)
         {
             return BadRequest(new ApiResponse<dynamic>
             {

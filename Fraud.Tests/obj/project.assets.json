@@ -39,6 +39,22 @@
           }
         }
       },
+      "JanusGraph.Net/1.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Gremlin.Net": "3.7.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/JanusGraph.Net.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/JanusGraph.Net.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.7": {
         "type": "package",
         "dependencies": {
@@ -2464,6 +2480,7 @@
         "dependencies": {
           "Gremlin.Net": "3.7.2",
           "IdentityModel": "7.0.0",
+          "JanusGraph.Net": "1.0.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "8.0.7",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "8.0.7",
           "Microsoft.AspNetCore.Mvc.NewtonsoftJson": "8.0.7",
@@ -2582,6 +2599,20 @@
         "lib/netstandard2.0/IdentityModel.dll",
         "lib/netstandard2.0/IdentityModel.pdb",
         "lib/netstandard2.0/IdentityModel.xml"
+      ]
+    },
+    "JanusGraph.Net/1.0.0": {
+      "sha512": "O9a7vtFyjTpwM7RonX7CJHi/qdiu+tkuAksvEWg66eLPvh2zG6hQPvARIZfu2DGqkcjcte4lqXjnZq/1oRKcVQ==",
+      "type": "package",
+      "path": "janusgraph.net/1.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "JanusGraph logomark color RGB.png",
+        "janusgraph.net.1.0.0.nupkg.sha512",
+        "janusgraph.net.nuspec",
+        "lib/netstandard2.0/JanusGraph.Net.dll",
+        "lib/netstandard2.0/JanusGraph.Net.xml"
       ]
     },
     "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.7": {

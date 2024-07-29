@@ -1,12 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "292uA6fF6/A=",
+  "dgSpecHash": "nfrk+VTXrNc=",
   "success": true,
   "projectFilePath": "/Users/kay/Documents/fraud/dotnet/Fraud/Fraud.Tests/Fraud.Tests.csproj",
   "expectedPackageFiles": [
     "/Users/kay/.nuget/packages/coverlet.collector/6.0.0/coverlet.collector.6.0.0.nupkg.sha512",
     "/Users/kay/.nuget/packages/gremlin.net/3.7.2/gremlin.net.3.7.2.nupkg.sha512",
     "/Users/kay/.nuget/packages/identitymodel/7.0.0/identitymodel.7.0.0.nupkg.sha512",
+    "/Users/kay/.nuget/packages/janusgraph.net/1.0.0/janusgraph.net.1.0.0.nupkg.sha512",
     "/Users/kay/.nuget/packages/microsoft.aspnetcore.authentication.jwtbearer/8.0.7/microsoft.aspnetcore.authentication.jwtbearer.8.0.7.nupkg.sha512",
     "/Users/kay/.nuget/packages/microsoft.aspnetcore.cryptography.internal/8.0.7/microsoft.aspnetcore.cryptography.internal.8.0.7.nupkg.sha512",
     "/Users/kay/.nuget/packages/microsoft.aspnetcore.cryptography.keyderivation/8.0.7/microsoft.aspnetcore.cryptography.keyderivation.8.0.7.nupkg.sha512",

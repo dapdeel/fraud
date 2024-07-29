@@ -520,14 +520,14 @@ namespace Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<float>("AccountBalance")
+                    b.Property<float?>("AccountBalance")
                         .HasColumnType("real");
 
                     b.Property<string>("AccountNumber")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("AccountType")
+                    b.Property<int?>("AccountType")
                         .HasColumnType("integer");
 
                     b.Property<int>("BankId")

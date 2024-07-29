@@ -45,6 +45,7 @@ public class AccountRequest
     [Required]
     public required string AccountNumber { get; set; }
 
+    public AccountType? AccountType { get; set; }
     public float? Balance { get; set; }
     [Required]
     public required string BankCode { get; set; }

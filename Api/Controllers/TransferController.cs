@@ -21,7 +21,6 @@ public class TransferController : ControllerBase
     public async Task<IActionResult> Ingest(TransactionTransferRequest request)
     {
         var response = await _transerService.Ingest(request);
-        // var response = _graphService.connect();
 
         return Ok(new ApiResponse<object>
         {

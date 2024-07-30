@@ -9,6 +9,9 @@ public class JanusService : IGraphService
 {
     public static readonly string CustomerNode = "Customer";
     public static readonly string AccountNode = "Account";
+    public static readonly string TransactionNode = "Transaction";
+
+    public static readonly string DeviceNode = "Device";
 
     private GraphConfig _graphConfig;
     public JanusService(IOptions<GraphConfig> configuration)

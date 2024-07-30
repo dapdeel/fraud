@@ -316,7 +316,7 @@ namespace Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("DeviceType")
+                    b.Property<int?>("DeviceType")
                         .HasColumnType("integer");
 
                     b.Property<string>("IpAddress")

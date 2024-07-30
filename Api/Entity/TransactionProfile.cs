@@ -3,7 +3,7 @@ public class TransactionProfile
 {
     public long Id { get; set; }
     public required string DeviceId { get; set; }
-    public DeviceType DeviceType { get; set; }
+    public DeviceType? DeviceType { get; set; }
     public string? IpAddress { get; set; }
     public string? Longitude { get; set; }
     public string? Latitude { get; set; }

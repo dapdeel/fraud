@@ -4,7 +4,8 @@ using Api.Models;
 public class TransactionTransferRequest
 {
     [Required]
-    public int ObservatoryId;
+    public int ObservatoryId { get; set; }
+
     [Required]
     public required CustomerRequest DebitCustomer { get; set; }
     [Required]
@@ -17,13 +18,19 @@ public class TransactionRequest
 {
     [Required]
     [Range(0, int.MaxValue, ErrorMessage = "The Transaction Amount cannot be Negative")]
-    public required float Amount;
+    public required float Amount { get; set; }
+
     [Required]
-    public required string TransactionId;
+    public required string TransactionId { get; set; }
+
     [Required]
-    public required DateTime TransactionDate;
-    public string? Description;
-    public string? Country;
+    public required DateTime TransactionDate { get; set; }
+
+    public string? Currency { get; set; }
+    public string? Description { get; set; }
+
+    public string? Country { get; set; }
+
 }
 
 public class CustomerRequest
@@ -34,7 +41,7 @@ public class CustomerRequest
     public required string Name { get; set; }
     [Required]
     public required string Phone { get; set; }
-    public ProfileRequest? Profile { get; set; }
+    public DeviceRequest? Device { get; set; }
     [Required]
     public required AccountRequest Account { get; set; }
 
@@ -52,7 +59,7 @@ public class AccountRequest
     public required string Country { get; set; }
 }
 
-public class ProfileRequest
+public class DeviceRequest
 {
     public string? DeviceId { get; set; }
     public string? IpAddress { get; set; }

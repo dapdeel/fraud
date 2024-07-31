@@ -61,6 +61,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IObservatoryService, ObservatoryService>();
+builder.Services.AddSingleton<IBankService, BankService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddTransient<IGraphService, JanusService>();
 

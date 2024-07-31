@@ -46,6 +46,7 @@ public class BankService : IBankService
                 Name = bankRequest.Name
             };
             _context.Banks.Add(Bank);
+            Banks.Add(Bank);
         }
 
         _context.SaveChanges();

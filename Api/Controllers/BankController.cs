@@ -1,6 +1,7 @@
 using Api.DTOs;
 using Api.Exception;
 using Api.Interfaces;
+using Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -38,16 +39,20 @@ public class BankController : ControllerBase
         }
     }
     [HttpPost("Add")]
-    public IActionResult Add([FromBody] BankRequest request)
+    public IActionResult Add([FromBody] List<BankRequest> requests)
     {
         try
         {
-            var bank = _bankService.Add(request);
-
+            List<Bank> banks = [];
+            foreach (var request in requests)
+            {
+                var bank = _bankService.Add(request);
+                banks.Add(bank);
+            }
             return Ok(new ApiResponse<dynamic>
             {
                 Status = "success",
-                Data = bank
+                Data = banks
             });
         }
         catch (ValidateErrorException Exception)

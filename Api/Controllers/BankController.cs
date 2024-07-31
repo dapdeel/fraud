@@ -43,12 +43,9 @@ public class BankController : ControllerBase
     {
         try
         {
-            List<Bank> banks = [];
-            foreach (var request in requests)
-            {
-                var bank = _bankService.Add(request);
-                banks.Add(bank);
-            }
+
+            var banks = _bankService.Add(requests);
+
             return Ok(new ApiResponse<dynamic>
             {
                 Status = "success",

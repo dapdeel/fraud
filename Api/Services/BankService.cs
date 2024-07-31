@@ -15,7 +15,8 @@ public class BankService : IBankService
     {
         var existingBank = _context.Banks
         .Where(b => b.Code == bankRequest.Code && b.Country == bankRequest.Country).ToList();
-        if(existingBank.Count() > 0){
+        if (existingBank.Count() > 0)
+        {
             throw new ValidationException("This Bank Already Exists");
         }
         var Bank = new Bank
@@ -27,6 +28,28 @@ public class BankService : IBankService
         _context.Banks.Add(Bank);
         _context.SaveChanges();
         return Bank;
+    }
+    public List<Bank> Add(List<BankRequest> bankRequests)
+    {
+        List<Bank> Banks = [];
+        foreach (var bankRequest in bankRequests)
+        {
+            var existingBank = _context.Banks.Where(b => b.Code == bankRequest.Code && b.Country == bankRequest.Country).ToList();
+            if (existingBank.Count() > 0)
+            {
+                continue;
+            }
+            var Bank = new Bank
+            {
+                Code = bankRequest.Code,
+                Country = bankRequest.Country == null ? "NGN" : bankRequest.Country,
+                Name = bankRequest.Name
+            };
+            _context.Banks.Add(Bank);
+        }
+
+        _context.SaveChanges();
+        return Banks;
     }
 
     public List<Bank> All()

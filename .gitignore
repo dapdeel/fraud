@@ -256,6 +256,7 @@ $RECYCLE.BIN/
 .idea/.idea_test_workspace/
 .idea/.idea_external_dependencies/
 
+Api/appsettings.json
 # End of `.gitignore` file
 
 

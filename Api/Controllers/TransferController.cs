@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Api.DTOs;
+using Api.Exception;
 using Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -20,14 +21,26 @@ public class TransferController : ControllerBase
     [HttpPost("ingest")]
     public async Task<IActionResult> Ingest(TransactionTransferRequest request)
     {
-        var response = await _transerService.Ingest(request);
-
-        return Ok(new ApiResponse<object>
+        try
         {
-            Status = "success",
-            Message = "User registered successfully",
-            Data = new { }
-        });
+            var response = await _transerService.Ingest(request);
+
+            return Ok(new ApiResponse<object>
+            {
+                Status = "success",
+                Message = "User registered successfully",
+                Data = new { }
+            });
+        }
+        catch (ValidateErrorException Exception)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = Exception.Message },
+                Message = Exception.Message
+            });
+        }
     }
     //
     [HttpGet("getUser")]

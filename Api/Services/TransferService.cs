@@ -284,6 +284,16 @@ public class TransferService : ITransferService
     public List<string> ValidateTransactionTransfer(TransactionTransferRequest request)
     {
         var errors = new List<string>();
+        var debitBank = _context.Banks.Where(b => b.Code == request.DebitCustomer.Account.BankCode && b.Country == request.DebitCustomer.Account.Country).FirstOrDefault();
+        if (debitBank == null)
+        {
+            errors.Add("Invalid Debit Account Bank Supplied");
+        }
+        var creditBank = _context.Banks.Where(b => b.Code == request.CreditCustomer.Account.BankCode && b.Country == request.CreditCustomer.Account.Country).FirstOrDefault();
+        if (creditBank == null)
+        {
+            errors.Add("Invalid Credit Account Bank Supplied");
+        }
 
         return errors;
     }

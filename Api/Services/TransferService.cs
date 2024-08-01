@@ -294,6 +294,10 @@ public class TransferService : ITransferService
         {
             errors.Add("Invalid Credit Account Bank Supplied");
         }
+        if (request.ObservatoryId <= 0)
+        {
+         errors.Add("Please Specify what observatory you are monitoring");
+        }
 
         return errors;
     }

@@ -3,15 +3,14 @@ using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-public class RabbitMqConsumerService : BackgroundService
+public class TransferIngestConsumerService : BackgroundService
 {
     private readonly IConfiguration _configuration;
     private IModel _channel;
     private string _QueueName;
     private int _sleepTime;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ITransferService _transferService;
-    public RabbitMqConsumerService(IConfiguration configuration, IServiceScopeFactory scopeFactory)
+    public TransferIngestConsumerService(IConfiguration configuration, IServiceScopeFactory scopeFactory)
     {
         _configuration = configuration;
         _QueueName = _configuration.GetValue<string>("IngestQueueName");
@@ -39,7 +38,6 @@ public class RabbitMqConsumerService : BackgroundService
             Thread.Sleep(_sleepTime);
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
-            Console.WriteLine("ConsumerA received: {0}", message);
             var response = JsonSerializer.Deserialize<TransactionTransferRequest>(message);
             if (response != null)
             {

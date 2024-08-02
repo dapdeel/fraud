@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Api.DTOs;
+using Api.Entity;
 using Api.Exception;
 using Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -90,12 +91,14 @@ public class ObservatoryController : ControllerBase
         }
     }
 
-    [HttpPost("Accept/{id}")]
-    public async Task<IActionResult> Accept(int id)
+
+    [HttpPost("AcceptInvite/{id}")]
+    public async Task<IActionResult> AcceptInvite(int id)
     {
         try
         {
-            await _service.AcceptInvite(id);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _service.AcceptInvite(id, userId);
             return Ok(new ApiResponse<object>
             {
                 Status = "success",
@@ -113,4 +116,65 @@ public class ObservatoryController : ControllerBase
             });
         }
     }
+
+
+    [HttpPost("RejectInvite/{id}")]
+    public async Task<IActionResult> RejectInvite(int id)
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _service.RejectInvite(id, userId);
+            return Ok(new ApiResponse<object>
+            {
+                Status = "success",
+                Message = "Invitation rejected successfully",
+                Data = new { }
+            });
+        }
+        catch (ValidateErrorException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
+    }
+
+    [HttpGet("CheckUserStatus")]
+    public async Task<IActionResult> CheckUserStatus(string userIdd)
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var statusDto = await _service.CheckUserObservatoryStatus(userId);
+
+            return Ok(new ApiResponse<UserObservatoryStatus>
+            {
+                Status = "success",
+                Data = statusDto
+            });
+        }
+        catch (ValidateErrorException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ApiResponse<dynamic>
+            {
+                Status = "error",
+                Message = "An unexpected error occurred.",
+                Error = new ApiError { Code = "", Details = ex.Message }
+            });
+        }
+    }
+
 }

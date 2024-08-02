@@ -1,8 +1,10 @@
 using Api.Data;
 using Api.DTOs;
+using Api.Entity;
 using Api.Exception;
 using Api.Models;
 using Api.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 public class ObservatoryService : IObservatoryService
 {
     private readonly ApplicationDbContext _context;
@@ -80,21 +82,42 @@ public class ObservatoryService : IObservatoryService
         _context.UserObservatories.Add(userObservatory);
         await _context.SaveChangesAsync();
     }
-
-    public async Task AcceptInvite(int userObservatoryId)
+    public async Task AcceptInvite(int userObservatoryId, string userId)
     {
-        var userObservatory = await _context.UserObservatories.FindAsync(userObservatoryId);
+        var userObservatory = await _context.UserObservatories
+            .Include(uo => uo.Observatory)
+            .FirstOrDefaultAsync(uo => uo.Id == userObservatoryId && uo.UserId == userId);
+
+
         if (userObservatory == null)
         {
-            throw new ValidateErrorException("Invitation not found");
+            throw new ValidateErrorException("Invitation not found or you do not have permission to accept this invitation.");
         }
-
         if (userObservatory.Status == Status.Member)
         {
-            throw new ValidateErrorException("User is already a member");
+            throw new ValidateErrorException("User is already a member of the observatory.");
         }
 
         userObservatory.Status = Status.Member;
+        userObservatory.UpdatedAt = DateTime.UtcNow;
+
+        _context.UserObservatories.Update(userObservatory);
+        await _context.SaveChangesAsync();
+    }
+
+
+    public async Task RejectInvite(int userObservatoryId, string userId)
+    {
+        var userObservatory = await _context.UserObservatories
+            .FirstOrDefaultAsync(uo => uo.Id == userObservatoryId && uo.UserId == userId);
+
+        if (userObservatory == null)
+        {
+            throw new ValidateErrorException("Invitation not found or you do not have permission to reject this invitation.");
+        }
+
+
+        userObservatory.Status = Status.Rejected;
         userObservatory.UpdatedAt = DateTime.UtcNow;
 
         _context.UserObservatories.Update(userObservatory);
@@ -130,4 +153,33 @@ public class ObservatoryService : IObservatoryService
         return Observatory;
 
     }
+    public async Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId)
+    {
+        var userObservatories = await _context.UserObservatories
+            .Where(uo => uo.UserId == userId)
+            .Include(uo => uo.Observatory)
+            .ToListAsync();
+
+        var isMember = userObservatories.Any(uo => uo.Status == Status.Member);
+        var pendingInvites = userObservatories
+            .Where(uo => uo.Status == Status.Invited)
+            .Select(uo => new InvitationResponse
+            {
+                ObservatoryId = uo.ObservatoryId,
+                ObservatoryName = uo.Observatory.Name,
+                InvitedAt = uo.CreatedAt
+            })
+            .ToList();
+
+        var isInvited = pendingInvites.Any();
+
+        return new UserObservatoryStatus
+        {
+            IsMember = isMember,
+            IsInvited = isInvited,
+            PendingInvites = isInvited ? pendingInvites : null
+        };
+    }
+
+
 }

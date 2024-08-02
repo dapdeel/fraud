@@ -18,12 +18,13 @@ public class JanusService : IGraphService
     {
         _graphConfig = configuration.Value;
     }
-    public Gremlin.Net.Process.Traversal.GraphTraversalSource connect()
+    public JanusGraphConnector connect()
     {
-        var serializer = new JanusGraphGraphSONMessageSerializer();
-        var Client = new GremlinClient(new GremlinServer(_graphConfig.Host, 8182), serializer);
-        var g = Traversal().WithRemote(new DriverRemoteConnection(Client));
-        return g;
+        // var serializer = new JanusGraphGraphSONMessageSerializer();
+        // var Client = new GremlinClient(new GremlinServer(_graphConfig.Host, 8182), serializer);
+        // var g = Traversal().WithRemote(new DriverRemoteConnection(Client));
+        var Connector = new JanusGraphConnector(_graphConfig.Host);
+        return Connector;
     }
 
 }

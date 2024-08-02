@@ -21,7 +21,8 @@ public class TransferService : ITransferService
         {
             throw new ValidateErrorException(string.Join(", ", errors));
         }
-        var g = _graphService.connect();
+        var connector = _graphService.connect();
+        var g = connector.traversal();
         try
         {
             g.Tx().Begin();
@@ -68,12 +69,17 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("Unable to complete transactions " + Exception.Message);
             g.Tx().Begin();
         }
+        finally
+        {
+            connector.Client().Dispose();
+        }
 
         return null;
     }
     private async Task<TransactionCustomer> AddCustomer(CustomerRequest customerRequest)
     {
-        var g = _graphService.connect();
+        var connector = _graphService.connect();
+        var g = connector.traversal();
 
         try
         {
@@ -126,10 +132,15 @@ public class TransferService : ITransferService
             await g.Tx().RollbackAsync();
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
+        finally
+        {
+            connector.Client().Dispose();
+        }
     }
     private async Task<TransactionAccount> AddAccount(AccountRequest accountRequest, TransactionCustomer customer)
     {
-        var g = _graphService.connect();
+        var connector = _graphService.connect();
+        var g = connector.traversal();
         try
         {
             g.Tx().Begin();
@@ -181,11 +192,17 @@ public class TransferService : ITransferService
             await g.Tx().RollbackAsync();
             throw new ValidateErrorException(Exception.Message);
         }
+        finally
+        {
+            connector.Client().Dispose();
+        }
     }
 
     private async Task<Api.Models.Transaction> AddTransaction(TransactionTransferRequest request, TransactionAccount debitAccount, TransactionAccount creditAccount)
     {
-        var g = _graphService.connect();
+
+        var connector = _graphService.connect();
+        var g = connector.traversal();
         try
         {
             var transaction = new Api.Models.Transaction
@@ -230,11 +247,16 @@ public class TransferService : ITransferService
             await g.Tx().RollbackAsync();
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
+        finally
+        {
+            connector.Client().Dispose();
+        }
 
     }
     private async Task<Api.Models.TransactionProfile> AddDevice(DeviceRequest request, TransactionCustomer customer, Api.Models.Transaction transaction)
     {
-        var g = _graphService.connect();
+        var connector = _graphService.connect();
+        var g = connector.traversal();
         try
         {
             g.Tx().Begin();
@@ -279,6 +301,8 @@ public class TransferService : ITransferService
         {
             await g.Tx().RollbackAsync();
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
+        }finally{
+            connector.Client().Dispose();
         }
     }
     public List<string> ValidateTransactionTransfer(TransactionTransferRequest request)
@@ -296,7 +320,7 @@ public class TransferService : ITransferService
         }
         if (request.ObservatoryId <= 0)
         {
-         errors.Add("Please Specify what observatory you are monitoring");
+            errors.Add("Please Specify what observatory you are monitoring");
         }
 
         return errors;

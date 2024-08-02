@@ -238,7 +238,9 @@ public class TransferService : ITransferService
             .As("T1").V().Has(JanusService.AccountNode, "Id", creditAccount.Id)
             .AddE("RECEIVED").From("T1").Property("CreatedAt", transaction.CreatedAt).Next();
             await g.Tx().CommitAsync();
-
+            transaction.Indexed = true;
+            _context.Update(transaction);
+            _context.SaveChanges();
             return transaction;
         }
         catch (Exception Exception)

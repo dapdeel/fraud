@@ -67,7 +67,6 @@ public class TransferService : ITransferService
         catch (Exception Exception)
         {
             throw new ValidateErrorException("Unable to complete transactions " + Exception.Message);
-            g.Tx().Begin();
         }
         finally
         {

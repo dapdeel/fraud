@@ -214,7 +214,7 @@ public class TransferService : ITransferService
                 Currency = request.Transaction.Currency,
                 Description = request.Transaction.Description,
                 TransactionType = TransactionType.Transfer,
-                TransactionDate = request.Transaction.TransactionDate,
+                TransactionDate = request.Transaction.TransactionDate.ToUniversalTime(),
             };
             _context.Transactions.Add(transaction);
             _context.SaveChanges();

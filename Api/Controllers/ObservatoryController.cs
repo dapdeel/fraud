@@ -98,7 +98,7 @@ public class ObservatoryController : ControllerBase
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _service.AcceptInvite(id, userId);
+            await _service.AcceptInvite(id);
             return Ok(new ApiResponse<object>
             {
                 Status = "success",
@@ -144,12 +144,12 @@ public class ObservatoryController : ControllerBase
     }
 
     [HttpGet("CheckUserStatus")]
-    public async Task<IActionResult> CheckUserStatus(string userIdd)
+    public async Task<IActionResult> CheckUserStatus()
     {
         try
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var statusDto = await _service.CheckUserObservatoryStatus(userId);
+            var user = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var statusDto = await _service.CheckUserObservatoryStatus();
 
             return Ok(new ApiResponse<UserObservatoryStatus>
             {

@@ -8,11 +8,11 @@ namespace Api.Services.Interfaces
     {
         Task<Observatory?> Add(ObservatoryRequest request, string userId);
         Task<Observatory?> Get(int id, string userId);
-        Task AcceptInvite(int userObservatoryId, string userId);
+
+
+        Task AcceptInvite(int userObservatoryId);
         Task RejectInvite(int userObservatoryId, string userId);
         Task Invite(InvitationRequest request);
-
-
-        Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId);
+        Task<UserObservatoryStatus> CheckUserObservatoryStatus();
     }
 }

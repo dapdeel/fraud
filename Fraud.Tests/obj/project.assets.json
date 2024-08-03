@@ -7807,32 +7807,34 @@
     ]
   },
   "packageFolders": {
-    "/Users/kay/.nuget/packages/": {}
+    "C:\\Users\\DELL\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/kay/Documents/fraud/dotnet/Fraud/Fraud.Tests/Fraud.Tests.csproj",
+      "projectUniqueName": "C:\\backend\\fraud\\Fraud.Tests\\Fraud.Tests.csproj",
       "projectName": "Fraud.Tests",
-      "projectPath": "/Users/kay/Documents/fraud/dotnet/Fraud/Fraud.Tests/Fraud.Tests.csproj",
-      "packagesPath": "/Users/kay/.nuget/packages/",
-      "outputPath": "/Users/kay/Documents/fraud/dotnet/Fraud/Fraud.Tests/obj/",
+      "projectPath": "C:\\backend\\fraud\\Fraud.Tests\\Fraud.Tests.csproj",
+      "packagesPath": "C:\\Users\\DELL\\.nuget\\packages\\",
+      "outputPath": "C:\\backend\\fraud\\Fraud.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/kay/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\DELL\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "/Users/kay/Documents/fraud/dotnet/Fraud/Api/Api.csproj": {
-              "projectPath": "/Users/kay/Documents/fraud/dotnet/Fraud/Api/Api.csproj"
+            "C:\\backend\\fraud\\Api\\Api.csproj": {
+              "projectPath": "C:\\backend\\fraud\\Api\\Api.csproj"
             }
           }
         }
@@ -7885,7 +7887,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.303/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

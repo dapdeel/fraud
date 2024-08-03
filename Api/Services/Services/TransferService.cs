@@ -8,7 +8,7 @@ using Gremlin.Net.Process.Traversal;
 public class TransferService : ITransferService
 {
     IGraphService _graphService;
-    ApplicationDbContext _context;
+    private readonly ApplicationDbContext _context;
     public TransferService(IGraphService graphService, ApplicationDbContext context)
     {
         _graphService = graphService;
@@ -97,6 +97,7 @@ public class TransferService : ITransferService
                     Phone = customerRequest.Phone,
                 };
                 _context.TransactionCustomers.Add(Customer);
+                _context.SaveChanges();
                 g.AddV(JanusService.CustomerNode)
                 .Property("CustomerId", Customer.CustomerId)
                 .Property("Name", Customer.FullName)
@@ -110,7 +111,7 @@ public class TransferService : ITransferService
                 Customer.Email = customerRequest.Email;
                 Customer.FullName = customerRequest.Name;
                 _context.TransactionCustomers.Update(Customer);
-
+                _context.SaveChanges();
                 var customerGraphId = g.V()
                 .HasLabel(JanusService.CustomerNode)
                 .Has("CustomerId", Customer.CustomerId).Id();
@@ -123,7 +124,6 @@ public class TransferService : ITransferService
 
             }
             await g.Tx().CommitAsync();
-            _context.SaveChanges();
             return Customer;
         }
         catch (Exception Exception)
@@ -214,7 +214,7 @@ public class TransferService : ITransferService
                 Currency = request.Transaction.Currency,
                 Description = request.Transaction.Description,
                 TransactionType = TransactionType.Transfer,
-                TransactionDate = request.Transaction.TransactionDate,
+                TransactionDate = request.Transaction.TransactionDate.ToUniversalTime(),
             };
             _context.Transactions.Add(transaction);
             _context.SaveChanges();
@@ -302,7 +302,9 @@ public class TransferService : ITransferService
         {
             await g.Tx().RollbackAsync();
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
-        }finally{
+        }
+        finally
+        {
             connector.Client().Dispose();
         }
     }

@@ -5,6 +5,7 @@ using Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -13,22 +14,30 @@ public class TransferController : ControllerBase
 {
     private IGraphService _graphService;
     private ITransferService _transerService;
-    public TransferController(IGraphService graphService, ITransferService transferService)
+    private IQueuePublisherService _queuePublisherService;
+    private readonly IConfiguration _configuration;
+    public TransferController(IGraphService graphService, ITransferService transferService,
+     IQueuePublisherService queuePublisherService, IConfiguration configuration)
     {
         _graphService = graphService;
         _transerService = transferService;
+        _queuePublisherService = queuePublisherService;
+        _configuration = configuration;
     }
     [HttpPost("ingest")]
-    public async Task<IActionResult> Ingest(TransactionTransferRequest request)
+    public IActionResult Ingest(TransactionTransferRequest request)
     {
         try
         {
-            var response = await _transerService.Ingest(request);
+            var requestString = JsonConvert.SerializeObject(request);
+            var queueName = _configuration.GetValue<string>("IngestQueueName");
+            _queuePublisherService.Publish(queueName, requestString);
+            // var response = await _transerService.Ingest(request);
 
             return Ok(new ApiResponse<object>
             {
                 Status = "success",
-                Message = "User registered successfully",
+                Message = "Record Queued successfully",
                 Data = new { }
             });
         }

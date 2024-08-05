@@ -78,11 +78,11 @@ builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
 builder.Services.AddHostedService<TransferIngestConsumerService>();
 
 var app = builder.Build();
-app.UseCors("AllowAllOrigins");
+
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+    app.UseSwagger(); 
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API v1"));
 }
 else
@@ -95,6 +95,7 @@ else
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseCors("AllowAllOrigins");
 
 app.MapControllers();
 

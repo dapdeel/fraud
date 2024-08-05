@@ -3,7 +3,7 @@ name: Build and Deploy to AWS
 on:
   push:
     branches:
-      - qa
+      - main
 
 jobs:
   build:
@@ -27,16 +27,19 @@ jobs:
     - name: Publish
       run: dotnet publish --configuration Release --output ./publish --no-build
 
+    - name: Install AWS CLI
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y awscli
+
+    - name: Configure AWS CLI
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set default.region us-east-1
+
     - name: Upload to S3
-      uses: jakejarvis/s3-sync-action@master
-      with:
-        args: --acl public-read --follow-symlinks --delete
-      env:
-        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }} # Name of the S3 bucket
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: 'us-east-1' # Change this to your region
-        SOURCE_DIR: './publish' # This is the directory created by 'dotnet publish'
+      run: aws s3 cp ./publish s3://${{ secrets.AWS_S3_BUCKET }}/myapp.zip --recursive --exclude "*" --include "*.dll" --include "*.json" --include "*.exe" --include "*.pdb" --include "*.config"
 
   deploy:
     runs-on: ubuntu-latest

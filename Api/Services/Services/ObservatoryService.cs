@@ -146,10 +146,6 @@ public class ObservatoryService : IObservatoryService
             .Include(uo => uo.Observatory)
             .ToListAsync();
 
-        if (!userObservatories.Any())
-        {
-            throw new ValidateErrorException("User not found");
-        }
         var isMember = userObservatories.Any(uo => uo.Status == Status.Member);
         var pendingInvites = userObservatories
             .Where(uo => uo.Status == Status.Invited)

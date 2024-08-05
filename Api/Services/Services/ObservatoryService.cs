@@ -1,20 +1,21 @@
 using Api.Data;
 using Api.DTOs;
-using Api.Entity;
 using Api.Exception;
+using Api.Interfaces;
 using Api.Models;
+using Api.Models.Responses;
 using Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 public class ObservatoryService : IObservatoryService
 {
     private readonly ApplicationDbContext _context;
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IAuthService _authService;
 
-    public ObservatoryService(ApplicationDbContext context, IHttpContextAccessor httpContextAccessor)
+    public ObservatoryService(ApplicationDbContext context, IAuthService authService)
     {
         _context = context;
-        _httpContextAccessor = httpContextAccessor;
+        _authService = authService;
     }
 
     public async Task<Observatory?> Add(ObservatoryRequest request, string userId)
@@ -60,17 +61,11 @@ public class ObservatoryService : IObservatoryService
 
 
 
-    public async Task Invite(InvitationRequest request)
+    public async Task Invite(InvitationRequest request, string inviterUserId)
     {
-        var inviterUserId = _httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (inviterUserId == null)
-        {
-            throw new ValidateErrorException("Unable to determine the inviter's user ID.");
-        }
-
+    
         await EnsureUserIsAdmin(inviterUserId, request.ObservatoryId);
-        await EnsureUserExists(request.UserId);
+        await _authService.EnsureUserExists(request.UserId);
         await EnsureObservatoryExists(request.ObservatoryId);
         await EnsureUserNotAlreadyInvited(request.UserId, request.ObservatoryId);
 
@@ -90,16 +85,9 @@ public class ObservatoryService : IObservatoryService
 
 
 
-    public async Task AcceptInvite(int observatoryId)
+    public async Task AcceptInvite(int observatoryId, string userId)
     {
-        var userId = _httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (userId == null)
-        {
-            throw new ValidateErrorException("Unable to determine the user's user ID.");
-        }
-
-        var userObservatory = await _context.UserObservatories
+              var userObservatory = await _context.UserObservatories
             .Include(uo => uo.Observatory)
             .FirstOrDefaultAsync(uo => uo.ObservatoryId == observatoryId && uo.UserId == userId);
 
@@ -150,18 +138,18 @@ public class ObservatoryService : IObservatoryService
         return errors;
     }
 
-    public async Task<UserObservatoryStatus> CheckUserObservatoryStatus()
+    public async Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId)
     {
-        var userId = _httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (userId == null)
-        {
-            throw new ValidateErrorException("Unable to determine the user's user ID.");
-        }
+     
         var userObservatories = await _context.UserObservatories
             .Where(uo => uo.UserId == userId)
             .Include(uo => uo.Observatory)
             .ToListAsync();
 
+        if (!userObservatories.Any())
+        {
+            throw new ValidateErrorException("User not found");
+        }
         var isMember = userObservatories.Any(uo => uo.Status == Status.Member);
         var pendingInvites = userObservatories
             .Where(uo => uo.Status == Status.Invited)
@@ -173,16 +161,14 @@ public class ObservatoryService : IObservatoryService
             })
             .ToList();
 
-        var isInvited = pendingInvites.Any();
+        var status = (isMember || pendingInvites.Any()) ? 1 : 0;
 
         return new UserObservatoryStatus
         {
-            IsMember = isMember,
-            IsInvited = isInvited,
-            PendingInvites = isInvited ? pendingInvites : null
+            Status = status,
+            PendingInvites = pendingInvites.Any() ? pendingInvites : null
         };
     }
-
 
 
     public List<string> Errors()
@@ -195,17 +181,10 @@ public class ObservatoryService : IObservatoryService
         var UserObservatory = _context.UserObservatories
         .Where(uo => uo.ObservatoryId == id && uo.UserId == userId && uo.Status == Status.Member)
         .FirstOrDefault();
-        if (UserObservatory == null)
-        {
-            throw new ValidateErrorException("You do not have access to this Observatory, please contact your admin");
-        }
         var Observatory = await _context.Observatories.FindAsync(id);
         return Observatory;
 
     }
-
-
-
 
 
 
@@ -227,14 +206,7 @@ public class ObservatoryService : IObservatoryService
         }
     }
 
-    private async Task EnsureUserExists(string userId)
-    {
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null)
-        {
-            throw new ValidateErrorException("User not found");
-        }
-    }
+  
 
     private async Task EnsureObservatoryExists(int observatoryId)
     {
@@ -250,17 +222,19 @@ public class ObservatoryService : IObservatoryService
         var existingUserObservatory = await _context.UserObservatories
             .FirstOrDefaultAsync(uo => uo.ObservatoryId == observatoryId && uo.UserId == userId);
 
-        if (existingUserObservatory != null)
+        if (existingUserObservatory == null)
         {
-            if (existingUserObservatory.Status == Status.Member)
-            {
-                throw new ValidateErrorException("User is already a member of the observatory.");
-            }
+            return;
+        }
 
-            if (existingUserObservatory.Status == Status.Invited)
-            {
-                throw new ValidateErrorException("User is already invited to the observatory.");
-            }
+        if (existingUserObservatory.Status == Status.Member)
+        {
+            throw new ValidateErrorException("User is already a member of the observatory.");
+        }
+
+        if (existingUserObservatory.Status == Status.Invited)
+        {
+            throw new ValidateErrorException("User is already invited to the observatory.");
         }
     }
 

@@ -65,6 +65,18 @@ builder.Services.AddScoped<IBankService, BankService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddTransient<IGraphService, JanusService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ClientPermission", policy =>
+    {
+        policy.AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowAnyOrigin();
+        //  .AllowCredentials();
+    });
+});
+
+
 var app = builder.Build();
 
 
@@ -79,7 +91,7 @@ else
 
 }
 
-
+app.UseCors("ClientPermission");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

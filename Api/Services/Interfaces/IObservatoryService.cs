@@ -1,6 +1,6 @@
 using Api.DTOs;
-using Api.Entity;
 using Api.Models;
+using Api.Models.Responses;
 
 namespace Api.Services.Interfaces
 {
@@ -10,9 +10,9 @@ namespace Api.Services.Interfaces
         Task<Observatory?> Get(int id, string userId);
 
 
-        Task AcceptInvite(int userObservatoryId);
+        Task AcceptInvite(int userObservatoryId, string userId);
         Task RejectInvite(int userObservatoryId, string userId);
-        Task Invite(InvitationRequest request);
-        Task<UserObservatoryStatus> CheckUserObservatoryStatus();
+        Task Invite(InvitationRequest request, string inviterUserId);
+        Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId);
     }
 }

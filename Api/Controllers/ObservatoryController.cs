@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Api.DTOs;
-using Api.Entity;
 using Api.Exception;
+using Api.Models.Responses;
 using Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -68,11 +68,11 @@ public class ObservatoryController : ControllerBase
     }
 
     [HttpPost("Invite")]
-    public async Task<IActionResult> Invite([FromBody] InvitationRequest request)
+    public async Task<IActionResult> Invite([FromBody] InvitationRequest request, string invitedUserId)
     {
         try
         {
-            await _service.Invite(request);
+            await _service.Invite(request, invitedUserId);
             return Ok(new ApiResponse<object>
             {
                 Status = "success",
@@ -93,12 +93,11 @@ public class ObservatoryController : ControllerBase
 
 
     [HttpPost("AcceptInvite/{id}")]
-    public async Task<IActionResult> AcceptInvite(int id)
+    public async Task<IActionResult> AcceptInvite(int id, string userId)
     {
         try
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _service.AcceptInvite(id);
+            await _service.AcceptInvite(id, userId);
             return Ok(new ApiResponse<object>
             {
                 Status = "success",
@@ -144,12 +143,11 @@ public class ObservatoryController : ControllerBase
     }
 
     [HttpGet("CheckUserStatus")]
-    public async Task<IActionResult> CheckUserStatus()
+    public async Task<IActionResult> CheckUserStatus([FromQuery] string userId)
     {
         try
         {
-            var user = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var statusDto = await _service.CheckUserObservatoryStatus();
+            var statusDto = await _service.CheckUserObservatoryStatus(userId);
 
             return Ok(new ApiResponse<UserObservatoryStatus>
             {

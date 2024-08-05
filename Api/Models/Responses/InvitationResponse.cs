@@ -1,4 +1,4 @@
-﻿namespace Api.Entity
+﻿namespace Api.Models.Responses
 {
     public class InvitationResponse
     {

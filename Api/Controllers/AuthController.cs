@@ -76,7 +76,11 @@ namespace Api.Controllers
                 {
                     Status = "Error",
                     Message = Exception.Message,
-                    Data = Exception.InnerException.ToString()
+                    Error = new ApiError
+                    {
+                        Code = "LOGIN_FAILED",
+                        Details = string.Join(", ", Exception.InnerException.ToString())
+                    }
                 });
             }
         }

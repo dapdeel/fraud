@@ -39,7 +39,7 @@ jobs:
         aws configure set default.region us-east-1
 
     - name: Upload to S3
-      run: aws s3 cp ./publish s3://${{ secrets.AWS_S3_BUCKET }}/myapp.zip --recursive --exclude "*" --include "*.dll" --include "*.json" --include "*.exe" --include "*.pdb" --include "*.config"
+      run: aws s3 cp ./publish s3://${{ secrets.AWS_S3_BUCKET }}/${{ github.sha }}myapp.zip --recursive --exclude "*" --include "*.dll" --include "*.json" --include "*.exe" --include "*.pdb" --include "*.config"
 
   deploy:
     runs-on: ubuntu-latest
@@ -56,4 +56,4 @@ jobs:
         version_label: ${{ github.sha }}
         region: us-east-1 # Change this to your region
         s3_bucket: ${{ secrets.AWS_S3_BUCKET }}
-        s3_key: 'myapp.zip' # The key of the zip file in the S3 bucket
+        s3_key: '${{ github.sha }}myapp.zip' # The key of the zip file in the S3 bucket

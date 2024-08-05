@@ -51,8 +51,8 @@ jobs:
       with:
         aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        application_name: my-application-name # Your Elastic Beanstalk application name
-        environment_name: my-environment-name # Your Elastic Beanstalk environment name
+        application_name: devbackend # Your Elastic Beanstalk application name
+        environment_name: publish-env # Your Elastic Beanstalk environment name
         version_label: ${{ github.sha }}
         region: us-east-1 # Change this to your region
         s3_bucket: ${{ secrets.AWS_S3_BUCKET }}

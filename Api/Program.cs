@@ -24,6 +24,16 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 
 builder.Services.Configure<GraphConfig>(builder.Configuration.GetSection("Graph"));
 
+builder.Services.AddCors(options =>
+   {
+       options.AddPolicy("AllowSpecificOrigin",
+           builder =>
+           {
+               builder.WithOrigins("https://qa.d1yndmk16cp7hz.amplifyapp.com") // Replace with your specific origin
+                      .AllowAnyHeader()
+                      .AllowAnyMethod();
+           });
+   });
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);

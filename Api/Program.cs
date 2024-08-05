@@ -26,10 +26,10 @@ builder.Services.Configure<GraphConfig>(builder.Configuration.GetSection("Graph"
 
 builder.Services.AddCors(options =>
    {
-       options.AddPolicy("AllowSpecificOrigin",
+       options.AddPolicy("AllowAllOrigins",
            builder =>
            {
-               builder.WithOrigins("https://qa.d1yndmk16cp7hz.amplifyapp.com") // Replace with your specific origin
+               builder.AllowAnyOrigin() // Replace with your specific origin
                       .AllowAnyHeader()
                       .AllowAnyMethod();
            });
@@ -78,7 +78,7 @@ builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
 builder.Services.AddHostedService<TransferIngestConsumerService>();
 
 var app = builder.Build();
-
+app.UseCors("AllowAllOrigins");
 
 if (app.Environment.IsDevelopment())
 {
@@ -95,7 +95,6 @@ else
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseCors("AllowSpecificOrigin");
 
 app.MapControllers();
 

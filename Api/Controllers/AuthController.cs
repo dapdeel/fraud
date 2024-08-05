@@ -46,27 +46,39 @@ namespace Api.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDTO model)
         {
-            var result = await _authService.LoginAsync(model);
-            if (!result.Success)
+            try
+            {
+                var result = await _authService.LoginAsync(model);
+                if (!result.Success)
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Status = "error",
+                        Message = "Login failed",
+                        Error = new ApiError
+                        {
+                            Code = "LOGIN_FAILED",
+                            Details = string.Join(", ", result.Errors.Select(e => e.Description))
+                        }
+                    });
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    Status = "success",
+                    Message = "Login successful",
+                    Data = new { result.Token, result.RefreshToken }
+                });
+            }
+            catch (Exception Exception)
             {
                 return BadRequest(new ApiResponse<object>
                 {
-                    Status = "error",
-                    Message = "Login failed",
-                    Error = new ApiError
-                    {
-                        Code = "LOGIN_FAILED",
-                        Details = string.Join(", ", result.Errors.Select(e => e.Description))
-                    }
+                    Status = "Error",
+                    Message = Exception.Message,
+                    Data = Exception.InnerException.ToString()
                 });
             }
-
-            return Ok(new ApiResponse<object>
-            {
-                Status = "success",
-                Message = "Login successful",
-                Data = new { result.Token, result.RefreshToken }
-            });
         }
 
         [HttpPost("refresh-token")]

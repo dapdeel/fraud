@@ -1,6 +1,6 @@
 using System.Transactions;
 using Api.Data;
-using Api.Exception;
+using Api.CustomException;
 using Api.Models;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;

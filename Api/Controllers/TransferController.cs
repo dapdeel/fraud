@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Api.DTOs;
-using Api.Exception;
+using Api.CustomException;
 using Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;

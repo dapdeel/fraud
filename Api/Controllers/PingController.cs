@@ -1,5 +1,5 @@
 using Api.DTOs;
-using Api.Exception;
+using Api.CustomException;
 using Api.Interfaces;
 using Api.Models;
 using Microsoft.AspNetCore.Authorization;

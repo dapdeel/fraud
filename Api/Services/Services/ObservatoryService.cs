@@ -167,6 +167,8 @@ public class ObservatoryService : IObservatoryService
     }
 
 
+
+
     public List<string> Errors()
     {
         throw new NotImplementedException();
@@ -180,6 +182,17 @@ public class ObservatoryService : IObservatoryService
         var Observatory = await _context.Observatories.FindAsync(id);
         return Observatory;
 
+    }
+
+
+    public async Task<List<Observatory>> GetObservatoriesByUserId(string userId)
+    {
+        var observatories = await _context.UserObservatories
+            .Where(uo => uo.UserId == userId && uo.Status == Status.Member)
+            .Select(uo => uo.Observatory)
+            .ToListAsync();
+
+        return observatories;
     }
 
 

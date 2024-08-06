@@ -14,5 +14,6 @@ namespace Api.Services.Interfaces
         Task RejectInvite(int userObservatoryId, string userId);
         Task Invite(InvitationRequest request, string inviterUserId);
         Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId);
+        Task<List<Observatory>> GetObservatoriesByUserId( string userId);
     }
 }

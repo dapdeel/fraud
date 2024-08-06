@@ -44,11 +44,10 @@ public class ObservatoryController : ControllerBase
         }
     }
     [HttpGet("Get/{Id}")]
-    public async Task<IActionResult> Get(int id)
+    public async Task<IActionResult> Get(int id, string userId)
     {
         try
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var response = await _service.Get(id, userId);
             return Ok(new ApiResponse<dynamic>
             {
@@ -118,11 +117,10 @@ public class ObservatoryController : ControllerBase
 
 
     [HttpPost("RejectInvite/{id}")]
-    public async Task<IActionResult> RejectInvite(int id)
+    public async Task<IActionResult> RejectInvite(int id, string userId)
     {
         try
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             await _service.RejectInvite(id, userId);
             return Ok(new ApiResponse<object>
             {
@@ -153,6 +151,46 @@ public class ObservatoryController : ControllerBase
             {
                 Status = "success",
                 Data = statusDto
+            });
+        }
+        catch (ValidateErrorException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ApiResponse<dynamic>
+            {
+                Status = "error",
+                Message = "An unexpected error occurred.",
+                Error = new ApiError { Code = "", Details = ex.Message }
+            });
+        }
+    }
+    [HttpGet("GetByUserId")]
+    public async Task<IActionResult> GetObservatoriesByUserId(string userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "User not authenticated"
+                });
+            }
+
+            var observatories = await _service.GetObservatoriesByUserId(userId);
+            return Ok(new ApiResponse<dynamic>
+            {
+                Status = "success",
+                Data = observatories
             });
         }
         catch (ValidateErrorException ex)

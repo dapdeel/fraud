@@ -12,7 +12,7 @@ public class TransactionSummaryService : ITransactionSummaryService
     {
         _graphService = graphService;
     }
-    public async Task<ObservatorySummaryResponse> GetObservatorySummary(ObservatorySummaryRequest request)
+    public ObservatorySummaryResponse GetObservatorySummary(ObservatorySummaryRequest request)
     {
         var connector = _graphService.connect(request.ObservatoryId);
         var g = connector.traversal();

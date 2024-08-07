@@ -3,5 +3,5 @@ using Api.Models.Responses;
 
 public interface ITransactionSummaryService
 {
-    public abstract Task<ObservatorySummaryResponse> GetObservatorySummary(ObservatorySummaryRequest Request);
+    public abstract ObservatorySummaryResponse GetObservatorySummary(ObservatorySummaryRequest Request);
 }

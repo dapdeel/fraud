@@ -44,10 +44,11 @@ public class ObservatoryController : ControllerBase
         }
     }
     [HttpGet("Get/{Id}")]
-    public async Task<IActionResult> Get(int id, string userId)
+    public async Task<IActionResult> Get(int id)
     {
         try
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var response = await _service.Get(id, userId);
             return Ok(new ApiResponse<dynamic>
             {

@@ -74,6 +74,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IObservatoryService, ObservatoryService>();
 builder.Services.AddScoped<IBankService, BankService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
+builder.Services.AddScoped<ITransactionSummaryService,TransactionSummaryService>();
 builder.Services.AddTransient<IGraphService, JanusService>();
 builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
 builder.Services.AddHostedService<TransferIngestConsumerService>();

@@ -5,4 +5,5 @@ namespace Api.Services.Interfaces;
 public interface IGraphService
 {
    public abstract JanusGraphConnector connect();
+   public abstract JanusGraphConnector connect(int ObservatoryId);
 }

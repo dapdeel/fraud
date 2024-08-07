@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using Api.CustomException;
 using Api.Data;
 using Api.Interfaces;
 using Api.Models;
@@ -17,7 +18,7 @@ public class BankService : IBankService
         .Where(b => b.Code == bankRequest.Code && b.Country == bankRequest.Country).ToList();
         if (existingBank.Count() > 0)
         {
-            throw new ValidationException("This Bank Already Exists");
+            throw new ValidateErrorException("This Bank Already Exists");
         }
         var Bank = new Bank
         {

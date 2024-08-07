@@ -1,8 +1,8 @@
 ﻿namespace Api.Services
 {
+    using Api.CustomException;
     using Api.Data;
     using Api.DTOs;
-    using Api.Exception;
     using Api.Interfaces;
     using Api.Models;
     using Microsoft.AspNetCore.Identity;

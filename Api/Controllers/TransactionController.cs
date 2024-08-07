@@ -1,10 +1,10 @@
 ﻿using Api.Models; 
 using Api.Services.TransactionTracing;
-using Api.Exception;
 using Api.Models.Responses;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using Api.DTOs;
+using Api.CustomException;
 
 namespace Api.Controllers
 {

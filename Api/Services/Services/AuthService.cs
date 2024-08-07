@@ -1,6 +1,8 @@
 ﻿namespace Api.Services
 {
+    using Api.Data;
     using Api.DTOs;
+    using Api.Exception;
     using Api.Interfaces;
     using Api.Models;
     using Microsoft.AspNetCore.Identity;
@@ -17,11 +19,13 @@
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _context;
 
-        public AuthService(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+        public AuthService(UserManager<ApplicationUser> userManager, IConfiguration configuration, ApplicationDbContext context)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _context = context;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterUserDTO model)
@@ -173,6 +177,16 @@
                 throw new SecurityTokenException("Invalid token");
 
             return principal;
+        }
+
+
+        public async Task EnsureUserExists(string userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                throw new ValidateErrorException("User not found");
+            }
         }
     }
 }

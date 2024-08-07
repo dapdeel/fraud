@@ -9,6 +9,7 @@ using Api.Interfaces;
 using Api.Services;
 using Microsoft.OpenApi.Models;
 using Api.Services.Interfaces;
+using Api.Services.TransactionTracing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,6 +78,19 @@ builder.Services.AddScoped<ITransactionSummaryService,TransactionSummaryService>
 builder.Services.AddTransient<IGraphService, JanusService>();
 builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
 builder.Services.AddHostedService<TransferIngestConsumerService>();
+builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ClientPermission", policy =>
+    {
+        policy.AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowAnyOrigin();
+        //  .AllowCredentials();
+    });
+});
+
 
 var app = builder.Build();
 
@@ -92,7 +106,7 @@ else
 
 }
 
-
+app.UseCors("ClientPermission");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

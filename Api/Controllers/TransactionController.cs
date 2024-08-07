@@ -247,7 +247,7 @@ namespace Api.Controllers
                 return StatusCode(500, new ApiResponse<dynamic>
                 {
                     Status = "error",
-                    Message = "An unexpected error occurred.",
+                    Message = "An unexpected error occurred...",
                     Error = new ApiError { Code = "", Details = ex.Message }
                 });
             }

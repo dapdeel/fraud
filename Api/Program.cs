@@ -25,6 +25,16 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 
 builder.Services.Configure<GraphConfig>(builder.Configuration.GetSection("Graph"));
 
+builder.Services.AddCors(options =>
+   {
+       options.AddPolicy("AllowAllOrigins",
+           builder =>
+           {
+               builder.AllowAnyOrigin() // Replace with your specific origin
+                      .AllowAnyHeader()
+                      .AllowAnyMethod();
+           });
+   });
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
@@ -86,7 +96,7 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+    app.UseSwagger(); 
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API v1"));
 }
 else
@@ -99,6 +109,7 @@ app.UseCors("ClientPermission");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseCors("AllowAllOrigins");
 
 app.MapControllers();
 

@@ -16,7 +16,8 @@ public class TransferIngestConsumerService : BackgroundService
         _QueueName = _configuration.GetValue<string>("IngestQueueName");
         _sleepTime = _configuration.GetValue<int>("ConsumerDelayTime");
         _scopeFactory = scopeFactory;
-        var connectionFactory = new ConnectionFactory() { HostName = _configuration.GetValue<string>("RabbitMqHost") };
+        var HostName = _configuration.GetValue<string>("RabbitMqHost") ;
+        var connectionFactory = new ConnectionFactory() { HostName = HostName };
         var connection = connectionFactory.CreateConnection();
         _channel = connection.CreateModel();
         _channel.BasicQos(0, 1, false);

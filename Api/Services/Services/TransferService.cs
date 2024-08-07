@@ -1,6 +1,6 @@
 using System.Transactions;
 using Api.Data;
-using Api.Exception;
+using Api.CustomException;
 using Api.Models;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
@@ -66,7 +66,7 @@ public class TransferService : ITransferService
         }
         catch (Exception Exception)
         {
-            throw new ValidateErrorException("Unable to complete transactions " + Exception.Message);
+            return null;
         }
         finally
         {

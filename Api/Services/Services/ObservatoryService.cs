@@ -1,7 +1,11 @@
 using Api.Data;
 using Api.DTOs;
+<<<<<<< HEAD
 using Api.Exception;
 using Api.Interfaces;
+=======
+using Api.CustomException;
+>>>>>>> qa
 using Api.Models;
 using Api.Models.Responses;
 using Api.Services.Interfaces;

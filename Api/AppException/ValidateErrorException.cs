@@ -1,4 +1,4 @@
-namespace Api.Exception;
+namespace Api.CustomException;
 using System;
 public class ValidateErrorException : Exception
 {

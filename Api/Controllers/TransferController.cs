@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Api.DTOs;
-using Api.Exception;
+using Api.CustomException;
 using Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -12,27 +12,26 @@ using Newtonsoft.Json;
 [Authorize]
 public class TransferController : ControllerBase
 {
-    private IGraphService _graphService;
-    private ITransferService _transerService;
+    private IObservatoryService _observatoryService;
     private IQueuePublisherService _queuePublisherService;
     private readonly IConfiguration _configuration;
-    public TransferController(IGraphService graphService, ITransferService transferService,
+    public TransferController(IObservatoryService observatoryService,
      IQueuePublisherService queuePublisherService, IConfiguration configuration)
     {
-        _graphService = graphService;
-        _transerService = transferService;
+        _observatoryService = observatoryService;
         _queuePublisherService = queuePublisherService;
         _configuration = configuration;
     }
     [HttpPost("ingest")]
-    public IActionResult Ingest(TransactionTransferRequest request)
+    public async Task<IActionResult> Ingest(TransactionTransferRequest request)
     {
         try
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var observatory = await _observatoryService.Get(request.ObservatoryId, userId);
             var requestString = JsonConvert.SerializeObject(request);
             var queueName = _configuration.GetValue<string>("IngestQueueName");
             _queuePublisherService.Publish(queueName, requestString);
-            // var response = await _transerService.Ingest(request);
 
             return Ok(new ApiResponse<object>
             {

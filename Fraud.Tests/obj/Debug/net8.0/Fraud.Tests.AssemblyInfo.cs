@@ -14,7 +14,11 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Fraud.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
+<<<<<<< HEAD
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a3e5ef8bb154fb02e85a810b6fc2776cb39f38ae")]
+=======
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+df7854f07e015de6159528651f19c41d4f7aaec9")]
+>>>>>>> main
 [assembly: System.Reflection.AssemblyProductAttribute("Fraud.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Fraud.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

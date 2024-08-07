@@ -1,15 +1,11 @@
 using System.Security.Claims;
 using Api.DTOs;
-<<<<<<< HEAD
-using Api.Exception;
-using Api.Models.Responses;
-=======
 using Api.CustomException;
->>>>>>> qa
 using Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Api.Models.Responses;
 
 [Route("api/[controller]")]
 [ApiController]

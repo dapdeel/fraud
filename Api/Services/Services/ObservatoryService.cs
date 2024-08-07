@@ -1,16 +1,12 @@
 using Api.Data;
 using Api.DTOs;
-<<<<<<< HEAD
-using Api.Exception;
-using Api.Interfaces;
-=======
 using Api.CustomException;
->>>>>>> qa
 using Api.Models;
 using Api.Models.Responses;
 using Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Api.Interfaces;
 public class ObservatoryService : IObservatoryService
 {
     private readonly ApplicationDbContext _context;

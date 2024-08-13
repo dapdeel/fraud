@@ -9,9 +9,15 @@ public class TransferService : ITransferService
 {
     IGraphService _graphService;
     private readonly ApplicationDbContext _context;
+
+    private FrequencyCalculator _FrequencyCalculator;
+    private WeightCalculator _WeightCalculator;
+
     public TransferService(IGraphService graphService, ApplicationDbContext context)
     {
         _graphService = graphService;
+        _FrequencyCalculator = new FrequencyCalculator();
+        _WeightCalculator = new WeightCalculator();
         _context = context;
     }
     public async Task<Api.Models.Transaction> Ingest(TransactionTransferRequest request)
@@ -58,6 +64,7 @@ public class TransferService : ITransferService
             await g.Tx().CommitAsync();
 
             var transaction = await AddTransaction(request, DebitAccount, CreditAccount);
+
             if (request.DebitCustomer.Device != null && request.DebitCustomer.Device?.DeviceId != null)
             {
                 await AddDevice(request.DebitCustomer.Device, DebitCustomer, transaction);
@@ -121,10 +128,74 @@ public class TransferService : ITransferService
                     .Property("Email", Customer.Email)
                     .Property("Name", Customer.FullName);
                 }
+                else
+                {
+                    g.AddV(JanusService.CustomerNode)
+                        .Property("CustomerId", Customer.CustomerId)
+                        .Property("Name", Customer.FullName)
+                        .Property("Phone", Customer.Phone)
+                        .Property("Email", Customer.Email).Next();
+                }
 
             }
             await g.Tx().CommitAsync();
             return Customer;
+        }
+        catch (Exception Exception)
+        {
+            await g.Tx().RollbackAsync();
+            throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
+        }
+        finally
+        {
+            connector.Client().Dispose();
+        }
+    }
+    private async Task<bool> AddAccountEdge(object? DebitAccountNode, object? CreditAccountNode, DateTime TransactionDate, float Amount)
+    {
+        var connector = _graphService.connect();
+        var g = connector.traversal();
+        if (DebitAccountNode == null || CreditAccountNode == null)
+        {
+            throw new ValidateErrorException("There were issues in Adding Relationship to the Transaction ");
+        }
+        try
+        {
+            g.Tx().Begin();
+            var relationship = g.V(DebitAccountNode).BothE("Transfered").Where(__.OtherV().HasId(CreditAccountNode)).Id();
+            if (relationship.HasNext())
+            {
+                var EdgeId = relationship.Next();
+                var LastEMEA = g.E(EdgeId).Values<double>("LastEMEA").Next();
+                var LastTransactionDate = DateTime.Parse(g.E(EdgeId).Values<string>("LastTransactionDate").Next());
+                var LastWeight = g.E(EdgeId).Values<double>("LastWeight").Next();
+                var TransactionCount = g.E(EdgeId).Values<int>("TransactionCount").Next();
+                var EMEA = _FrequencyCalculator.Calculate(LastEMEA, TransactionDate, LastTransactionDate);
+                var Weight = _WeightCalculator.Calculate(EMEA, Amount, LastTransactionDate);
+
+                var edge = g.E(EdgeId);
+                edge = edge.Property("LastEMEA", EMEA);
+                edge = edge.Property("LastTransactionDate", TransactionDate);
+                edge = edge.Property("LastWeight", Weight);
+                edge = edge.Property("TransactionCount", TransactionCount + 1);
+                edge.Next();
+            }
+            else
+            {
+
+                var EMEA = _FrequencyCalculator.Calculate();
+                var Weight = _WeightCalculator.Calculate(EMEA, Amount);
+                g.V(DebitAccountNode).HasLabel(JanusService.AccountNode)
+                      .As("D").V(CreditAccountNode).HasLabel(JanusService.AccountNode)
+                      .AddE("Transfered").From("D")
+                      .Property("LastEMEA", EMEA)
+                      .Property("LastTransactionDate", TransactionDate)
+                      .Property("LastWeight", Weight)
+                      .Property("TransactionCount",1)
+                      .Next();
+            }
+            await g.Tx().CommitAsync();
+            return true;
         }
         catch (Exception Exception)
         {
@@ -176,11 +247,22 @@ public class TransferService : ITransferService
                 Account.AccountBalance = accountRequest.Balance;
                 _context.TransactionAccounts.Update(Account);
                 _context.SaveChanges();
-                var accountGraphId = g.V()
+                var accountGraph = g.V()
                      .HasLabel(JanusService.AccountNode)
-                    .Has("Id", Account.Id).Id().Next();
-
-                g.V(accountGraphId).Property("Balance", Account.AccountBalance);
+                    .Has("Id", Account.Id).Id();
+                if (accountGraph.HasNext())
+                {
+                    g.V(accountGraph.Next()).Property("Balance", Account.AccountBalance);
+                }
+                else
+                {
+                    g.AddV(JanusService.AccountNode)
+                        .Property("Id", Account.Id)
+                        .Property("AccountNumber", Account.AccountNumber)
+                        .Property("BankCode", Account?.Bank?.Code)
+                        .Property("Country", Account?.Bank?.Country)
+                        .Property("Balance", Account?.AccountBalance).Next();
+                }
                 await g.Tx().CommitAsync();
             }
 
@@ -237,8 +319,17 @@ public class TransferService : ITransferService
             g.V().Has(JanusService.TransactionNode, "Id", transaction.Id)
             .As("T1").V().Has(JanusService.AccountNode, "Id", creditAccount.Id)
             .AddE("RECEIVED").From("T1").Property("CreatedAt", transaction.CreatedAt).Next();
+
+            var DebitAccountNodeId = g.V()
+                     .HasLabel(JanusService.AccountNode)
+                    .Has("Id", debitAccount.Id).Id().Next();
+            var CreditAccountNodeId = g.V()
+                     .HasLabel(JanusService.AccountNode)
+                    .Has("Id", creditAccount.Id).Id().Next();
+
+            var added = await AddAccountEdge(DebitAccountNodeId, CreditAccountNodeId, transaction.TransactionDate, transaction.Amount);
             await g.Tx().CommitAsync();
-            transaction.Indexed = true;
+            transaction.Indexed = added;
             _context.Update(transaction);
             _context.SaveChanges();
             return transaction;

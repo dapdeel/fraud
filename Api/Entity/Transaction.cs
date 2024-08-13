@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 public class Transaction
 {
     public int Id { get; set; }
+    public required string PlatformId { get; set; }
     public required float Amount { get; set; }
 
     public string? Currency { get; set; }

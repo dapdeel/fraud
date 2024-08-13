@@ -4,6 +4,7 @@ public class TransactionAccount
 {
     public int Id { get; set; }
     public float? AccountBalance { get; set; }
+    public required string AccountId { get; set; }
     public required string AccountNumber { get; set; }
     public AccountType? AccountType { get; set; }
     public int BankId { get; set; }

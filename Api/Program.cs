@@ -79,6 +79,7 @@ builder.Services.AddTransient<IGraphService, JanusService>();
 builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
 builder.Services.AddHostedService<TransferIngestConsumerService>();
 builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
+builder.Services.AddTransient<ITransactionGraphService,TransactionGraphService>();
 
 builder.Services.AddCors(options =>
 {

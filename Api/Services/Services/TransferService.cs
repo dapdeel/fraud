@@ -4,6 +4,7 @@ using Api.CustomException;
 using Api.Models;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
+using Api.Models.Data;
 
 public class TransferService : ITransferService
 {
@@ -11,13 +12,16 @@ public class TransferService : ITransferService
     private readonly ApplicationDbContext _context;
 
     private FrequencyCalculator _FrequencyCalculator;
+    private ITransactionGraphService _TransactionGraphService;
     private WeightCalculator _WeightCalculator;
 
-    public TransferService(IGraphService graphService, ApplicationDbContext context)
+    public TransferService(IGraphService graphService, ApplicationDbContext context, ITransactionGraphService TransactionGraphService)
     {
         _graphService = graphService;
+        _TransactionGraphService = TransactionGraphService;
         _FrequencyCalculator = new FrequencyCalculator();
         _WeightCalculator = new WeightCalculator();
+
         _context = context;
     }
     public async Task<Api.Models.Transaction> Ingest(TransactionTransferRequest request)
@@ -27,69 +31,65 @@ public class TransferService : ITransferService
         {
             throw new ValidateErrorException(string.Join(", ", errors));
         }
+        try
+        {
+
+            var DebitCustomer = await AddCustomer(request.DebitCustomer);
+            var DebitAccount = await AddAccount(request.DebitCustomer.Account, DebitCustomer);
+
+            var CreditCustomer = await AddCustomer(request.CreditCustomer);
+            var CreditAccount = await AddAccount(request.CreditCustomer.Account, CreditCustomer);
+
+            var transaction = await AddTransaction(request, DebitAccount, CreditAccount);
+
+            var TransactionData = new TransactionIngestData
+            {
+                DebitCustomer = DebitCustomer,
+                DebitAccount = DebitAccount,
+                CreditCustomer = CreditCustomer,
+                CreditAccount = CreditAccount,
+                Transaction = transaction
+            };
+            if (request.DebitCustomer.Device != null && request.DebitCustomer.Device?.DeviceId != null)
+            {
+                var TransactionProfile = await AddDevice(request.DebitCustomer.Device, DebitCustomer, transaction);
+                TransactionData.TransactionProfile = TransactionProfile;
+            }
+
+            var successfullyIndexed = await _TransactionGraphService.IngestTransactionInGraph(TransactionData);
+            transaction.Indexed = successfullyIndexed;
+            _context.Update(transaction);
+            _context.SaveChanges();
+            return transaction;
+
+        }
+        catch (Exception Exception)
+        {
+            throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
+        }
+    }
+    private async Task<bool> IngestTransactionInGraph(TransactionIngestData data)
+    {
         var connector = _graphService.connect();
         var g = connector.traversal();
         try
         {
             g.Tx().Begin();
-            var DebitCustomer = await AddCustomer(request.DebitCustomer);
-            var DebitAccount = await AddAccount(request.DebitCustomer.Account, DebitCustomer);
-
-            var DebitEdgeExists = g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", DebitCustomer.CustomerId)
-                 .OutE("Owns")
-                 .Where(__.InV().Has(JanusService.AccountNode, "Id", DebitAccount.Id))
-                 .HasNext();
-
-            if (!DebitEdgeExists)
-            {
-                g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", DebitCustomer.CustomerId)
-                .As("C").V().HasLabel(JanusService.AccountNode).Has("Id", DebitAccount.Id)
-                .AddE("Owns").From("C").Next();
-            }
-
-            var CreditCustomer = await AddCustomer(request.CreditCustomer);
-            var CreditAccount = await AddAccount(request.CreditCustomer.Account, CreditCustomer);
-
-            var CreditEdgeExists = g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", CreditCustomer.CustomerId)
-                .OutE("Owns")
-                .Where(__.InV().Has(JanusService.AccountNode, "Id", CreditAccount.Id))
-                .HasNext();
-
-            if (!CreditEdgeExists)
-            {
-                g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", CreditCustomer.CustomerId)
-                .As("C").V().HasLabel(JanusService.AccountNode).Has("Id", CreditAccount.Id)
-                .AddE("Owns").From("C").Next();
-            }
-            await g.Tx().CommitAsync();
-
-            var transaction = await AddTransaction(request, DebitAccount, CreditAccount);
-
-            if (request.DebitCustomer.Device != null && request.DebitCustomer.Device?.DeviceId != null)
-            {
-                await AddDevice(request.DebitCustomer.Device, DebitCustomer, transaction);
-            }
-
         }
         catch (Exception Exception)
         {
-            return null;
+            return false;
         }
         finally
         {
             connector.Client().Dispose();
         }
-
-        return null;
+        return true;
     }
     private async Task<TransactionCustomer> AddCustomer(CustomerRequest customerRequest)
     {
-        var connector = _graphService.connect();
-        var g = connector.traversal();
-
         try
         {
-            g.Tx().Begin();
             var Customer = _context.TransactionCustomers
             .Where(tc => tc.Email == customerRequest.Email || tc.Phone == customerRequest.Phone)
             .FirstOrDefault();
@@ -105,12 +105,6 @@ public class TransferService : ITransferService
                 };
                 _context.TransactionCustomers.Add(Customer);
                 _context.SaveChanges();
-                g.AddV(JanusService.CustomerNode)
-                .Property("CustomerId", Customer.CustomerId)
-                .Property("Name", Customer.FullName)
-                .Property("Phone", Customer.Phone)
-                .Property("Email", Customer.Email).Next();
-
             }
             else
             {
@@ -119,36 +113,13 @@ public class TransferService : ITransferService
                 Customer.FullName = customerRequest.Name;
                 _context.TransactionCustomers.Update(Customer);
                 _context.SaveChanges();
-                var customerGraphId = g.V()
-                .HasLabel(JanusService.CustomerNode)
-                .Has("CustomerId", Customer.CustomerId).Id();
-                if (customerGraphId.HasNext())
-                {
-                    g.V(customerGraphId.Next()).Property("Phone", Customer.Phone)
-                    .Property("Email", Customer.Email)
-                    .Property("Name", Customer.FullName);
-                }
-                else
-                {
-                    g.AddV(JanusService.CustomerNode)
-                        .Property("CustomerId", Customer.CustomerId)
-                        .Property("Name", Customer.FullName)
-                        .Property("Phone", Customer.Phone)
-                        .Property("Email", Customer.Email).Next();
-                }
 
             }
-            await g.Tx().CommitAsync();
             return Customer;
         }
         catch (Exception Exception)
         {
-            await g.Tx().RollbackAsync();
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
-        }
-        finally
-        {
-            connector.Client().Dispose();
         }
     }
     private async Task<bool> AddAccountEdge(object? DebitAccountNode, object? CreditAccountNode, DateTime TransactionDate, float Amount)
@@ -209,11 +180,8 @@ public class TransferService : ITransferService
     }
     private async Task<TransactionAccount> AddAccount(AccountRequest accountRequest, TransactionCustomer customer)
     {
-        var connector = _graphService.connect();
-        var g = connector.traversal();
         try
         {
-            g.Tx().Begin();
             var Bank = _context.Banks.Where(b => b.Code == accountRequest.BankCode).First();
 
             var Account = _context.TransactionAccounts
@@ -226,6 +194,7 @@ public class TransferService : ITransferService
                 {
                     AccountNumber = accountRequest.AccountNumber,
                     AccountBalance = accountRequest.Balance,
+                    AccountId = Guid.NewGuid().ToString(),
                     BankId = Bank.Id,
                     AccountType = accountRequest.AccountType,
                     CustomerId = customer.Id
@@ -234,63 +203,31 @@ public class TransferService : ITransferService
                 _context.TransactionAccounts.Add(Account);
                 _context.SaveChanges();
 
-                g.AddV(JanusService.AccountNode)
-                .Property("Id", Account.Id)
-                .Property("AccountNumber", Account.AccountNumber)
-                .Property("BankCode", Account?.Bank?.Code)
-                .Property("Country", Account?.Bank?.Country)
-                .Property("Balance", Account?.AccountBalance).Next();
-
             }
             else
             {
                 Account.AccountBalance = accountRequest.Balance;
                 _context.TransactionAccounts.Update(Account);
                 _context.SaveChanges();
-                var accountGraph = g.V()
-                     .HasLabel(JanusService.AccountNode)
-                    .Has("Id", Account.Id).Id();
-                if (accountGraph.HasNext())
-                {
-                    g.V(accountGraph.Next()).Property("Balance", Account.AccountBalance);
-                }
-                else
-                {
-                    g.AddV(JanusService.AccountNode)
-                        .Property("Id", Account.Id)
-                        .Property("AccountNumber", Account.AccountNumber)
-                        .Property("BankCode", Account?.Bank?.Code)
-                        .Property("Country", Account?.Bank?.Country)
-                        .Property("Balance", Account?.AccountBalance).Next();
-                }
-                await g.Tx().CommitAsync();
             }
 
             return Account;
         }
         catch (Exception Exception)
         {
-            await g.Tx().RollbackAsync();
             throw new ValidateErrorException(Exception.Message);
-        }
-        finally
-        {
-            connector.Client().Dispose();
         }
     }
 
     private async Task<Api.Models.Transaction> AddTransaction(TransactionTransferRequest request, TransactionAccount debitAccount, TransactionAccount creditAccount)
     {
-
-        var connector = _graphService.connect();
-        var g = connector.traversal();
         try
         {
-            g.Tx().Begin();
             var transaction = new Api.Models.Transaction
             {
                 Amount = request.Transaction.Amount,
                 ObservatoryId = request.ObservatoryId,
+                PlatformId = Guid.NewGuid().ToString(),
                 TransactionId = request.Transaction.TransactionId,
                 CreditAccountId = creditAccount.Id,
                 DebitAccountId = debitAccount.Id,
@@ -301,103 +238,62 @@ public class TransferService : ITransferService
             };
             _context.Transactions.Add(transaction);
             _context.SaveChanges();
-            g.AddV(JanusService.TransactionNode)
-                .Property("Id", transaction.Id)
-                .Property("TransactionId", transaction.TransactionId)
-                .Property("Amount", transaction.Amount)
-                .Property("TransactionDate", transaction.TransactionDate)
-                .Property("Timestamp", DateTime.UtcNow)
-                .Property("Type", TransactionType.Withdrawal)
-                .Property("Currency", transaction.Currency)
-                .Property("Description", transaction.Description)
-                .Property("ObservatoryId", transaction.ObservatoryId)
-                .Next();
+            //     g.AddV(JanusService.TransactionNode)
+            //         .Property("Id", transaction.Id)
+            //         .Property("TransactionId", transaction.TransactionId)
+            //         .Property("Amount", transaction.Amount)
+            //         .Property("TransactionDate", transaction.TransactionDate)
+            //         .Property("Timestamp", DateTime.UtcNow)
+            //         .Property("Type", TransactionType.Withdrawal)
+            //         .Property("Currency", transaction.Currency)
+            //         .Property("Description", transaction.Description)
+            //         .Property("ObservatoryId", transaction.ObservatoryId)
+            //         .Next();
 
-            g.V().Has(JanusService.AccountNode, "Id", debitAccount.Id).As("A1")
-           .V().Has(JanusService.TransactionNode, "Id", transaction.Id).AddE("SENT")
-           .From("A1").Property("CreatedAt", transaction.CreatedAt).Next();
+            //     g.V().Has(JanusService.AccountNode, "Id", debitAccount.Id).As("A1")
+            //    .V().Has(JanusService.TransactionNode, "Id", transaction.Id).AddE("SENT")
+            //    .From("A1").Property("CreatedAt", transaction.CreatedAt).Next();
 
-            g.V().Has(JanusService.TransactionNode, "Id", transaction.Id)
-            .As("T1").V().Has(JanusService.AccountNode, "Id", creditAccount.Id)
-            .AddE("RECEIVED").From("T1").Property("CreatedAt", transaction.CreatedAt).Next();
+            //     g.V().Has(JanusService.TransactionNode, "Id", transaction.Id)
+            //     .As("T1").V().Has(JanusService.AccountNode, "Id", creditAccount.Id)
+            //     .AddE("RECEIVED").From("T1").Property("CreatedAt", transaction.CreatedAt).Next();
 
-            var DebitAccountNodeId = g.V()
-                     .HasLabel(JanusService.AccountNode)
-                    .Has("Id", debitAccount.Id).Id().Next();
-            var CreditAccountNodeId = g.V()
-                     .HasLabel(JanusService.AccountNode)
-                    .Has("Id", creditAccount.Id).Id().Next();
+            // var DebitAccountNodeId = g.V()
+            //          .HasLabel(JanusService.AccountNode)
+            //         .Has("Id", debitAccount.Id).Id().Next();
+            // var CreditAccountNodeId = g.V()
+            //          .HasLabel(JanusService.AccountNode)
+            //         .Has("Id", creditAccount.Id).Id().Next();
 
-            var added = await AddAccountEdge(DebitAccountNodeId, CreditAccountNodeId, transaction.TransactionDate, transaction.Amount);
-            await g.Tx().CommitAsync();
-            transaction.Indexed = added;
-            _context.Update(transaction);
-            _context.SaveChanges();
+            // var added = await AddAccountEdge(DebitAccountNodeId, CreditAccountNodeId, transaction.TransactionDate, transaction.Amount);
+
             return transaction;
         }
         catch (Exception Exception)
         {
-            await g.Tx().RollbackAsync();
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
-        }
-        finally
-        {
-            connector.Client().Dispose();
         }
 
     }
     private async Task<Api.Models.TransactionProfile> AddDevice(DeviceRequest request, TransactionCustomer customer, Api.Models.Transaction transaction)
     {
-        var connector = _graphService.connect();
-        var g = connector.traversal();
         try
         {
-            g.Tx().Begin();
             var profile = new Api.Models.TransactionProfile
             {
                 CustomerId = customer.Id,
+                ProfileId = Guid.NewGuid().ToString(),
                 DeviceId = request.DeviceId,
                 DeviceType = request.DeviceType,
                 IpAddress = request.IpAddress
             };
             _context.TransactionProfiles.Add(profile);
-            g.AddV(JanusService.DeviceNode)
-                .Property("Id", profile.Id)
-                .Property("DeviceId", profile.DeviceId)
-                .Property("DeviceType", profile.DeviceType)
-                .Property("IpAddress", profile.IpAddress)
-                .Property("Timestamp", DateTime.UtcNow)
-                .Next();
-
-            var DeviceEdgeExist = g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", customer.CustomerId)
-                .OutE("USED_DEVICE")
-                .Where(__.InV().Has(JanusService.DeviceNode, "Id", profile.Id))
-                .HasNext();
-
-            if (!DeviceEdgeExist)
-            {
-                g.V().Has(JanusService.CustomerNode, "CustomerId", customer.CustomerId).As("c")
-                    .V().Has(JanusService.DeviceNode, "Id", profile.Id).AddE("USED_DEVICE")
-                    .From("c").Property("CreatedAt", DateTime.UtcNow).Next();
-            }
-
-            g.V().Has(JanusService.TransactionNode, "Id", transaction.Id)
-                .As("t1").V().Has(JanusService.DeviceNode, "Id", profile.Id)
-                .AddE("EXECUTED_ON").From("t1").Property("CreatedAt", transaction.CreatedAt)
-                .Next();
-
-            await g.Tx().CommitAsync();
             _context.SaveChanges();
             return profile;
         }
         catch (Exception Exception)
         {
-            await g.Tx().RollbackAsync();
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
-        }
-        finally
-        {
-            connector.Client().Dispose();
         }
     }
     public List<string> ValidateTransactionTransfer(TransactionTransferRequest request)

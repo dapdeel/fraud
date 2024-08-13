@@ -191,7 +191,7 @@ public class TransferService : ITransferService
                       .Property("LastEMEA", EMEA)
                       .Property("LastTransactionDate", TransactionDate)
                       .Property("LastWeight", Weight)
-                      .Property("TransactionCount",1)
+                      .Property("TransactionCount", 1)
                       .Next();
             }
             await g.Tx().CommitAsync();
@@ -286,6 +286,7 @@ public class TransferService : ITransferService
         var g = connector.traversal();
         try
         {
+            g.Tx().Begin();
             var transaction = new Api.Models.Transaction
             {
                 Amount = request.Transaction.Amount,
@@ -311,7 +312,7 @@ public class TransferService : ITransferService
                 .Property("Description", transaction.Description)
                 .Property("ObservatoryId", transaction.ObservatoryId)
                 .Next();
-            g.Tx().Begin();
+
             g.V().Has(JanusService.AccountNode, "Id", debitAccount.Id).As("A1")
            .V().Has(JanusService.TransactionNode, "Id", transaction.Id).AddE("SENT")
            .From("A1").Property("CreatedAt", transaction.CreatedAt).Next();

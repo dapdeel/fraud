@@ -22,6 +22,6 @@
     "Database": ""
   },
   "RabbitMqHost": "108.129.88.172",
-  "IngestQueueName": "TransferIngest",
+  "IngestQueueName": "TransferIngest1",
   "ConsumerDelayTime": 200
 }

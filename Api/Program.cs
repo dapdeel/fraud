@@ -70,16 +70,7 @@ builder.Services.AddControllers()
         options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
     });
 
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IObservatoryService, ObservatoryService>();
-builder.Services.AddScoped<IBankService, BankService>();
-builder.Services.AddScoped<ITransferService, TransferService>();
-builder.Services.AddScoped<ITransactionSummaryService,TransactionSummaryService>();
-builder.Services.AddTransient<IGraphService, JanusService>();
-builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
-builder.Services.AddHostedService<TransferIngestConsumerService>();
-builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
-builder.Services.AddTransient<ITransactionIngestGraphService,TransactionIngestGraphService>();
+AddServices(builder);
 
 builder.Services.AddCors(options =>
 {
@@ -98,7 +89,7 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger(); 
+    app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API v1"));
 }
 else
@@ -116,3 +107,18 @@ app.UseCors("AllowAllOrigins");
 app.MapControllers();
 
 app.Run();
+
+void AddServices(WebApplicationBuilder builder)
+{
+    builder.Services.AddScoped<IAuthService, AuthService>();
+    builder.Services.AddScoped<IObservatoryService, ObservatoryService>();
+    builder.Services.AddScoped<IBankService, BankService>();
+    builder.Services.AddScoped<ITransferService, TransferService>();
+    builder.Services.AddScoped<ITransactionSummaryService, TransactionSummaryService>();
+    builder.Services.AddTransient<IGraphService, JanusService>();
+    builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
+    builder.Services.AddHostedService<TransferIngestConsumerService>();
+    builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
+    builder.Services.AddTransient<ITransactionIngestGraphService, TransactionIngestGraphService>();
+    builder.Services.AddScoped<ITransactionTracingGraphService, TransactionTracingGraphService>();
+}

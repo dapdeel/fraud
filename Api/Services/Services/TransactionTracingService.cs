@@ -1,5 +1,5 @@
 ﻿using Api.Data;
-using Api.Models; 
+using Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.TransactionTracing
@@ -7,10 +7,12 @@ namespace Api.Services.TransactionTracing
     public class TransactionService : ITransactionTracingService
     {
         private readonly ApplicationDbContext _context;
+        private ITransactionTracingGraphService _transactionTracingGraphService;
 
-        public TransactionService(ApplicationDbContext context)
+        public TransactionService(ApplicationDbContext context, ITransactionTracingGraphService TransactionTracingGraphService)
         {
             _context = context;
+            _transactionTracingGraphService = TransactionTracingGraphService;
         }
 
         public async Task<int> GetTotalTransactionsLast30Days(string accountNumber)
@@ -25,7 +27,7 @@ namespace Api.Services.TransactionTracing
             return await _context.Transactions
                 .Where(t => (t.DebitAccount.AccountNumber == accountNumber || t.CreditAccount.AccountNumber == accountNumber) &&
                              t.TransactionDate >= DateTime.UtcNow.AddDays(-30))
-                .SumAsync(t => (decimal)t.Amount); 
+                .SumAsync(t => (decimal)t.Amount);
         }
 
         public async Task<int> GetTransactionsLastHour(string accountNumber)
@@ -59,6 +61,11 @@ namespace Api.Services.TransactionTracing
         public async Task<Api.Models.Transaction> GetTransactionById(int transactionId)
         {
             return await _context.Transactions.FindAsync(transactionId);
+        }
+        public TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId)
+        {
+            var response = _transactionTracingGraphService.GetTransaction(observatoryId, transactionId);
+            return response;
         }
 
         public async Task<List<Api.Models.Transaction>> GetTransactionsByCustomerId(string customerId)

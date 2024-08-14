@@ -18,7 +18,6 @@ public class JanusGraphConnector
     {
         var g = Traversal().WithRemote(new DriverRemoteConnection(_client));
         return g;
-        // throw new Exception("This traversal has not been initialized");
     }
     public GremlinClient Client()
     {

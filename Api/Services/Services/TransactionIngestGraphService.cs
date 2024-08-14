@@ -31,7 +31,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         catch (Exception exception)
         {
             throw new ValidateErrorException("Could not connect tor Graph, Please check connection or contact Admin " + exception.Message);
-            return false;
         }
     }
     public async Task<bool> IngestTransactionInGraph(TransactionIngestData data)
@@ -191,7 +190,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
 
             g.V().Has(JanusService.TransactionNode, "PlatformId", Transaction.PlatformId)
             .As("T1").V().Has(JanusService.AccountNode, "AccountId", CreditAccount.AccountId)
-            .AddE("RECEIVED").From("T1").Property("CreatedAt", Transaction.CreatedAt);
+            .AddE("RECEIVED").From("T1").Property("CreatedAt", Transaction.CreatedAt).Next();
 
             await g.Tx().CommitAsync();
             return true;

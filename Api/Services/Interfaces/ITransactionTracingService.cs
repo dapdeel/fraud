@@ -9,6 +9,7 @@ namespace Api.Services.TransactionTracing
         Task<List<Api.Models.Transaction>> GetAllTransactions(string accountNumber); // Updated
         Task<List<string>> GetSentAccounts(string accountNumber, DateTime startDate, DateTime endDate);
         Task<Api.Models.Transaction> GetTransactionById(int transactionId); // Updated
+        TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId);
         Task<List<Api.Models.Transaction>> GetTransactionsByCustomerId(string customerId); // Updated
     }
 }

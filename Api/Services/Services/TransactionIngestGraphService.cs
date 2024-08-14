@@ -5,7 +5,7 @@ using Api.Models.Data;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
 
-public class TransactionGraphService : ITransactionGraphService
+public class TransactionIngestGraphService : ITransactionIngestGraphService
 {
     private IGraphService _graphService;
     private readonly ApplicationDbContext _context;
@@ -13,7 +13,7 @@ public class TransactionGraphService : ITransactionGraphService
     private FrequencyCalculator _FrequencyCalculator;
     private WeightCalculator _WeightCalculator;
 
-    public TransactionGraphService(IGraphService graphService, ApplicationDbContext context)
+    public TransactionIngestGraphService(IGraphService graphService, ApplicationDbContext context)
     {
         _graphService = graphService;
         _FrequencyCalculator = new FrequencyCalculator();
@@ -30,6 +30,7 @@ public class TransactionGraphService : ITransactionGraphService
         }
         catch (Exception exception)
         {
+            throw new ValidateErrorException("Could not connect tor Graph, Please check connection or contact Admin " + exception.Message);
             return false;
         }
     }

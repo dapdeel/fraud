@@ -12,10 +12,10 @@ public class TransferService : ITransferService
     private readonly ApplicationDbContext _context;
 
     private FrequencyCalculator _FrequencyCalculator;
-    private ITransactionGraphService _TransactionGraphService;
+    private ITransactionIngestGraphService _TransactionGraphService;
     private WeightCalculator _WeightCalculator;
 
-    public TransferService(IGraphService graphService, ApplicationDbContext context, ITransactionGraphService TransactionGraphService)
+    public TransferService(IGraphService graphService, ApplicationDbContext context, ITransactionIngestGraphService TransactionGraphService)
     {
         _graphService = graphService;
         _TransactionGraphService = TransactionGraphService;

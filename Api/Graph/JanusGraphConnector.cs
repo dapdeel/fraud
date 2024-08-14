@@ -12,15 +12,13 @@ public class JanusGraphConnector
     {
         var serializer = new JanusGraphGraphSONMessageSerializer();
         _client = new GremlinClient(new GremlinServer(host, 8182), serializer);
-        _g = Traversal().WithRemote(new DriverRemoteConnection(_client));
+
     }
     public Gremlin.Net.Process.Traversal.GraphTraversalSource traversal()
     {
-        if (_g != null)
-        {
-            return _g;
-        }
-        throw new Exception("This traversal has not been initialized");
+        var g = Traversal().WithRemote(new DriverRemoteConnection(_client));
+        return g;
+        // throw new Exception("This traversal has not been initialized");
     }
     public GremlinClient Client()
     {

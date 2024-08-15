@@ -36,7 +36,6 @@ public class TransferIngestConsumerService : BackgroundService
         var consumer = new EventingBasicConsumer(_channel);
         consumer.Received += async (model, ea) =>
         {
-            Thread.Sleep(_sleepTime);
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
             var response = JsonSerializer.Deserialize<TransactionTransferRequest>(message);

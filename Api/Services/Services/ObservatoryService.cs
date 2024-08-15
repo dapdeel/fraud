@@ -63,7 +63,7 @@ public class ObservatoryService : IObservatoryService
 
     public async Task Invite(InvitationRequest request, string inviterUserId)
     {
-    
+
         await EnsureUserIsAdmin(inviterUserId, request.ObservatoryId);
         await _authService.EnsureUserExists(request.UserId);
         await EnsureObservatoryExists(request.ObservatoryId);
@@ -87,9 +87,9 @@ public class ObservatoryService : IObservatoryService
 
     public async Task AcceptInvite(int observatoryId, string userId)
     {
-              var userObservatory = await _context.UserObservatories
-            .Include(uo => uo.Observatory)
-            .FirstOrDefaultAsync(uo => uo.ObservatoryId == observatoryId && uo.UserId == userId);
+        var userObservatory = await _context.UserObservatories
+      .Include(uo => uo.Observatory)
+      .FirstOrDefaultAsync(uo => uo.ObservatoryId == observatoryId && uo.UserId == userId);
 
         if (userObservatory == null)
         {
@@ -140,7 +140,7 @@ public class ObservatoryService : IObservatoryService
 
     public async Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId)
     {
-     
+
         var userObservatories = await _context.UserObservatories
             .Where(uo => uo.UserId == userId)
             .Include(uo => uo.Observatory)
@@ -179,6 +179,10 @@ public class ObservatoryService : IObservatoryService
         var UserObservatory = _context.UserObservatories
         .Where(uo => uo.ObservatoryId == id && uo.UserId == userId && uo.Status == Status.Member)
         .FirstOrDefault();
+        if (UserObservatory == null)
+        {
+            throw new ValidateErrorException("You are not a member of this observatory.");
+        }
         var Observatory = await _context.Observatories.FindAsync(id);
         return Observatory;
 
@@ -215,7 +219,7 @@ public class ObservatoryService : IObservatoryService
         }
     }
 
-  
+
 
     private async Task EnsureObservatoryExists(int observatoryId)
     {

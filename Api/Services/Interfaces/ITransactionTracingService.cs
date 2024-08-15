@@ -10,7 +10,7 @@ namespace Api.Services.TransactionTracing
         Task<List<string>> GetSentAccounts(string accountNumber, DateTime startDate, DateTime endDate);
         Task<Api.Models.Transaction> GetTransactionById(int transactionId); // Updated
         TransactionGraphDetails GetAccountNode(int observatoryId, int nodeId);
-        Task<Api.Models.Transaction> GetFutureTransactions(DateTime Date, string AccountNumber, string BankCode, string Country);
+        List<TransactionGraphDetails> GetFutureTransactions(DateTime Date, string AccountNumber, string BankCode, string Country);
         TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId);
         Task<List<Api.Models.Transaction>> GetTransactionsByCustomerId(string customerId); // Updated
     }

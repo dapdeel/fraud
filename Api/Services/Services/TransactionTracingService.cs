@@ -76,9 +76,10 @@ namespace Api.Services.TransactionTracing
                 .ToListAsync();
         }
 
-        public Task<Transaction> GetFutureTransactions(DateTime Date, string AccountNumber, string BankCode, string Country)
+        public List<TransactionGraphDetails> GetFutureTransactions(DateTime Date, string AccountNumber, string BankCode, string Country)
         {
-            throw new NotImplementedException();
+            var responses = _transactionTracingGraphService.Trace(Date: Date, AccountNumber: AccountNumber, BankCode: BankCode, CountryCode: Country);
+            return responses;
         }
 
         public TransactionGraphDetails GetAccountNode(int observatoryId, int nodeId)

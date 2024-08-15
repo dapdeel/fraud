@@ -2,6 +2,7 @@ using Api.CustomException;
 using Api.Data;
 using Api.Models;
 using Api.Services.Interfaces;
+using Gremlin.Net.Process.Traversal;
 
 public class TransactionTracingGraphService : ITransactionTracingGraphService
 {
@@ -57,32 +58,44 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         };
         return response;
     }
-    public TransactionGraphDetails Trace(int ObservatoryId, DateTime Date, string AccountNumber, string BankCode)
+    public List<TransactionGraphDetails> Trace(DateTime Date, string AccountNumber, string BankCode, string CountryCode)
     {
-
-        var connected = connect(ObservatoryId);
-        if (!connected || _connector == null)
+        var Bank = _context.Banks.Where(b => b.Code == BankCode && b.Country == CountryCode).First();
+        var ValidObservatories = _context.Observatories
+            .Where(o => o.ObservatoryType == ObservatoryType.Swtich || (o.ObservatoryType == ObservatoryType.Bank && o.BankId == Bank.Id))
+            .ToList();
+        var data = new List<TransactionGraphDetails>();
+        foreach (var Observatory in ValidObservatories)
         {
-            throw new ValidateErrorException("Unable to Connect to Graph Transaction");
+            var connected = connect(Observatory.Id);
+            if (!connected || _connector == null)
+            {
+                throw new ValidateErrorException("Unable to Connect to Graph Transaction");
+            }
+
+            var g = _connector.traversal();
+            var transactionNodes = g.V().HasLabel(JanusService.TransactionNode)
+                .Has("ObservatoryId", Observatory.Id)
+                .Has("TransactionDate", P.Gte(Date))
+                .Where(__.InE("SENT").OutV().Has("AccountNumber", AccountNumber)
+                .Has("BankCode", BankCode).Has("Country", CountryCode))
+                .ToList();
+
+            foreach (var vertex in transactionNodes)
+            {
+                var NodeDetails = g.V(vertex?.Id).ValueMap<dynamic, dynamic>().Next();
+                var Edges = g.V(vertex?.Id).BothE().ToList();
+                var response = new TransactionGraphDetails
+                {
+                    Edges = Edges,
+                    Node = NodeDetails
+                };
+                data.Add(response);
+            }
+
         }
 
-        var g = _connector.traversal();
-        var transactionNode = g.V().HasLabel(JanusService.TransactionNode)
-            .Has("ObservatoryId", ObservatoryId).Has("TransactionId", "").Id();
-        if (!transactionNode.HasNext())
-        {
-            throw new ValidateErrorException("This Transaction Does not exist, Kindly try again");
-        }
-
-        var NodeId = transactionNode.Next();
-        var NodeDetails = g.V(NodeId).ValueMap<dynamic, dynamic>().Next();
-        var edges = g.V(NodeId).BothE().ToList();
-        var response = new TransactionGraphDetails
-        {
-            Edges = edges,
-            Node = NodeDetails
-        };
-        return response;
+        return data;
     }
 
 

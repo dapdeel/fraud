@@ -26,9 +26,13 @@ public class JanusService : IGraphService
     }
     public JanusGraphConnector connect()
     {
-        string[] Hosts = ["1111","22222"];
-        
-        var Connector = new JanusGraphConnector(_graphConfig.Host);
+        string[] Hosts = _graphConfig.Host.Split(",");
+        Random random = new Random();
+
+        // Get a random index from the array
+        int randomIndex = random.Next(Hosts.Length);
+
+        var Connector = new JanusGraphConnector(Hosts[randomIndex]);
         return Connector;
     }
     public JanusGraphConnector connect(int ObservatoryId)

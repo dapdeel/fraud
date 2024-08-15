@@ -139,7 +139,7 @@ public class TransferService : ITransferService
                 {
                     var request = MakeRequest(record);
                     var requestString = JsonConvert.SerializeObject(request);
-                    var queueName = "TransferIngestDev";
+                    var queueName = _configuration.GetValue<string>("IngestQueueName");
                     _queuePublisherService.Publish(queueName, requestString);
                 }
             }

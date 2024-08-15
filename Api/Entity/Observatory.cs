@@ -26,6 +26,7 @@ public class Observatory
     public string? GraphDatabase { get; set; }
     public string? GraphUser { get; set; }
     public string? GraphPassword { get; set; }
+    public ObservatoryType? ObservatoryType { get; set; }
     public int BankId { get; set; }
     public Bank? Bank { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -35,5 +36,12 @@ public class Observatory
     [JsonIgnore]
 
     public ICollection<UserObservatory> UserObservatories { get; } = [];
+
+}
+
+public enum ObservatoryType
+{
+    Swtich,
+    Bank
 
 }

@@ -39,6 +39,52 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         };
         return response;
     }
+    public TransactionGraphDetails GetNode(int ObservatoryId, int NodeId)
+    {
+        var connected = connect(ObservatoryId);
+        if (!connected || _connector == null)
+        {
+            throw new ValidateErrorException("Unable to Connect to Graph Transaction");
+        }
+
+        var g = _connector.traversal();
+        var NodeDetails = g.V(NodeId).ValueMap<dynamic, dynamic>().Next();
+        var edges = g.V(NodeId).BothE().ToList();
+        var response = new TransactionGraphDetails
+        {
+            Edges = edges,
+            Node = NodeDetails
+        };
+        return response;
+    }
+    public TransactionGraphDetails Trace(int ObservatoryId, DateTime Date, string AccountNumber, string BankCode)
+    {
+
+        var connected = connect(ObservatoryId);
+        if (!connected || _connector == null)
+        {
+            throw new ValidateErrorException("Unable to Connect to Graph Transaction");
+        }
+
+        var g = _connector.traversal();
+        var transactionNode = g.V().HasLabel(JanusService.TransactionNode)
+            .Has("ObservatoryId", ObservatoryId).Has("TransactionId", "").Id();
+        if (!transactionNode.HasNext())
+        {
+            throw new ValidateErrorException("This Transaction Does not exist, Kindly try again");
+        }
+
+        var NodeId = transactionNode.Next();
+        var NodeDetails = g.V(NodeId).ValueMap<dynamic, dynamic>().Next();
+        var edges = g.V(NodeId).BothE().ToList();
+        var response = new TransactionGraphDetails
+        {
+            Edges = edges,
+            Node = NodeDetails
+        };
+        return response;
+    }
+
 
 
     private bool connect(int ObservatoryId)
@@ -76,7 +122,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         }
 
         var g = _connector.traversal();
-       
+
         var NodeDetails = g.V(NodeId).ValueMap<dynamic, dynamic>().Next();
         var edges = g.V(NodeId).BothE().ToList();
         var response = new TransactionGraphDetails

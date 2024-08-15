@@ -26,9 +26,8 @@ public class JanusService : IGraphService
     }
     public JanusGraphConnector connect()
     {
-        // var serializer = new JanusGraphGraphSONMessageSerializer();
-        // var Client = new GremlinClient(new GremlinServer(_graphConfig.Host, 8182), serializer);
-        // var g = Traversal().WithRemote(new DriverRemoteConnection(Client));
+        string[] Hosts = ["1111","22222"];
+        
         var Connector = new JanusGraphConnector(_graphConfig.Host);
         return Connector;
     }

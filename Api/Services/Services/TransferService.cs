@@ -5,6 +5,11 @@ using Api.Models;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
 using Api.Models.Data;
+using Azure.Storage.Blobs;
+using CsvHelper;
+using System.Globalization;
+using Newtonsoft.Json;
+using CsvHelper.Configuration;
 
 public class TransferService : ITransferService
 {
@@ -15,14 +20,24 @@ public class TransferService : ITransferService
     private ITransactionIngestGraphService _TransactionGraphService;
     private WeightCalculator _WeightCalculator;
 
-    public TransferService(IGraphService graphService, ApplicationDbContext context, ITransactionIngestGraphService TransactionGraphService)
+    private IQueuePublisherService _queuePublisherService;
+    private readonly string? _blobConnectionString;
+    private readonly string? _blobContainerName;
+    private IConfiguration _configuration;
+
+    public TransferService(IGraphService graphService, ApplicationDbContext context,
+    ITransactionIngestGraphService TransactionGraphService,
+    IQueuePublisherService queuePublisherService, IConfiguration configuration)
     {
         _graphService = graphService;
         _TransactionGraphService = TransactionGraphService;
         _FrequencyCalculator = new FrequencyCalculator();
         _WeightCalculator = new WeightCalculator();
-
+        _configuration = configuration;
         _context = context;
+        _queuePublisherService = queuePublisherService;
+        _blobConnectionString = _configuration.GetSection("AzureBlobStorage:ConnectionString").Value;
+        _blobContainerName = _configuration.GetSection("AzureBlobStorage:ContainerName").Value;
     }
     public async Task<Api.Models.Transaction> Ingest(TransactionTransferRequest request)
     {
@@ -68,7 +83,7 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    private async Task<bool> IngestTransactionInGraph(TransactionIngestData data)
+    private bool IngestTransactionInGraph(TransactionIngestData data)
     {
         var connector = _graphService.connect();
         var g = connector.traversal();
@@ -76,7 +91,7 @@ public class TransferService : ITransferService
         {
             g.Tx().Begin();
         }
-        catch (Exception Exception)
+        catch (Exception)
         {
             return false;
         }
@@ -85,6 +100,109 @@ public class TransferService : ITransferService
             connector.Client().Dispose();
         }
         return true;
+    }
+
+    public async Task<bool> UploadAndIngest(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            throw new ValidateErrorException("No file was uploaded.");
+        }
+
+        if (_blobConnectionString == null || _blobContainerName == null)
+        {
+            throw new ValidateErrorException("Unable to initiate the blob");
+        }
+        try
+        {
+            // var blobServiceClient = new BlobServiceClient(_blobConnectionString);
+            // var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
+            // await containerClient.CreateIfNotExistsAsync();
+            // var blobName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+            // var blobClient = containerClient.GetBlobClient(blobName);
+            // using (var stream = file.OpenReadStream())
+            // {
+            //     await blobClient.UploadAsync(stream);
+            // }
+            // var url = blobClient.Uri.ToString();
+
+            using (var stream = file.OpenReadStream())
+            using (var reader = new StreamReader(stream))
+            using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture){
+                     HasHeaderRecord = true 
+            }))
+            {
+                var records = csv.GetRecords<TransactionCsvRecord>().ToList();
+
+                // Process the CSV records
+                foreach (var record in records)
+                {
+                    var request = MakeRequest(record);
+                    var requestString = JsonConvert.SerializeObject(request);
+                    var queueName = "TransferIngestDev";
+                    _queuePublisherService.Publish(queueName, requestString);
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            throw new ValidateErrorException($"Internal server error: {ex.Message}");
+        }
+    }
+    private TransactionTransferRequest MakeRequest(TransactionCsvRecord record)
+    {
+        var AccountRequest = new AccountRequest
+        {
+            AccountNumber = record.DebitCustomerAccountNumber,
+            BankCode = record.DebitCustomerBankCode,
+            Country = record.DebitCustomerCountry
+        };
+        var Device = new DeviceRequest
+        {
+            DeviceId = record.DebitCustomerDeviceId,
+            DeviceType = (DeviceType?)record.DebitCustomerDeviceType,
+            IpAddress = record.DebitCustomerIpAddress
+        };
+        var DebitCustomer = new CustomerRequest
+        {
+            Account = AccountRequest,
+            Email = record.DebitCustomerEmail,
+            Name = record.DebitCustomerName,
+            Phone = record.DebitCustomerPhone,
+            Device = Device
+        };
+        var CreditAccountRequest = new AccountRequest
+        {
+            AccountNumber = record.CreditCustomerAccountNumber,
+            BankCode = record.CreditCustomerBankCode,
+            Country = record.CreditCustomerCountry
+        };
+        var CreditCustomer = new CustomerRequest
+        {
+            Account = CreditAccountRequest,
+            Email = record.CreditCustomerEmail,
+            Name = record.CreditCustomerName,
+            Phone = record.CreditCustomerPhone,
+        };
+        var Transaction = new TransactionRequest
+        {
+            Amount = (float)record.TransactionAmount,
+            TransactionDate = record.TransactionDate,
+            TransactionId = record.TransactionId,
+            Description = record.TransactionDescription,
+
+        };
+        var request = new TransactionTransferRequest
+        {
+            DebitCustomer = DebitCustomer,
+            CreditCustomer = CreditCustomer,
+            Transaction = Transaction,
+            ObservatoryId = record.ObservatoryId
+        };
+        return request;
+
     }
     private async Task<TransactionCustomer> AddCustomer(CustomerRequest customerRequest)
     {

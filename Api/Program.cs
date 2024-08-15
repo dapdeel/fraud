@@ -10,9 +10,20 @@ using Api.Services;
 using Microsoft.OpenApi.Models;
 using Api.Services.Interfaces;
 using Api.Services.TransactionTracing;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 2L * 1024 * 1024 * 1024; // 2 GB
+});
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 2L * 1024 * 1024 * 1024; // 2 GB
+});
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 

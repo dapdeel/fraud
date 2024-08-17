@@ -117,7 +117,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     }
     private async Task<bool> AddAccountEdge(object? DebitAccountNode, object? CreditAccountNode, DateTime TransactionDate, float Amount)
     {
-        // var g = _connector.traversal();
         try
         {
             _g.Tx().Begin();
@@ -132,7 +131,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 var EdgeId = relationship.Next();
                 var LastEMEA = _g.E(EdgeId).Values<double>("LastEMEA").Next();
                 var LastTransactionDate = DateTime.Parse(_g.E(EdgeId).Values<string>("LastTransactionDate").Next());
-                var LastWeight = _g.E(EdgeId).Values<double>("LastWeight").Next();
+                var LastWeight = _g.E(EdgeId).Values<object>("LastWeight").Next();
                 var TransactionCount = _g.E(EdgeId).Values<int>("TransactionCount").Next();
                 var EMEA = _FrequencyCalculator.Calculate(LastEMEA, TransactionDate, LastTransactionDate);
                 var Weight = _WeightCalculator.Calculate(EMEA, Amount, LastTransactionDate);
@@ -206,7 +205,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     {
         try
         {
-            _g.Tx().Begin();
+           _g.Tx().Begin();
             var customerGraphId = _g.V()
                 .HasLabel(JanusService.CustomerNode)
                 .Has("CustomerId", Customer.CustomerId).Id();

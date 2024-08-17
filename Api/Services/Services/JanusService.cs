@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Api.CustomException;
 using Api.Data;
+using Api.Models;
 using Api.Services.Interfaces;
 using Gremlin.Net.Driver;
 using Gremlin.Net.Driver.Remote;
@@ -35,6 +36,24 @@ public class JanusService : IGraphService
         var Connector = new JanusGraphConnector(Hosts[randomIndex]);
         return Connector;
     }
+    public string GetHost(Observatory observatory)
+    {
+        var host = _graphConfig.Host;
+        if (!observatory.UseDefault)
+        {
+            host = observatory.GraphHost;
+        }
+        if (string.IsNullOrEmpty(host))
+        {
+            throw new ValidateErrorException("Invalid Host");
+        }
+        string[] Hosts = host.Split(",");
+        Random random = new Random();
+
+        // Get a random index from the array
+        int randomIndex = random.Next(Hosts.Length);
+        return Hosts[randomIndex];
+    }
     public JanusGraphConnector connect(int ObservatoryId)
     {
         var observatory = _context.Observatories.Find(ObservatoryId);
@@ -42,12 +61,8 @@ public class JanusService : IGraphService
         {
             throw new ValidateErrorException("No Observatory Found, Please contact your support officer");
         }
-        var host = _graphConfig.Host;
-        if (!observatory.UseDefault)
-        {
-            host = observatory.GraphHost;
-        }
-        var Connector = new JanusGraphConnector(host);
+
+        var Connector = new JanusGraphConnector(GetHost(observatory));
         return Connector;
     }
 

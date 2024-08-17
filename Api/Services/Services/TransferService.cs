@@ -115,16 +115,16 @@ public class TransferService : ITransferService
         }
         try
         {
-            // var blobServiceClient = new BlobServiceClient(_blobConnectionString);
-            // var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
-            // await containerClient.CreateIfNotExistsAsync();
-            // var blobName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-            // var blobClient = containerClient.GetBlobClient(blobName);
-            // using (var stream = file.OpenReadStream())
-            // {
-            //     await blobClient.UploadAsync(stream);
-            // }
-            // var url = blobClient.Uri.ToString();
+            var blobServiceClient = new BlobServiceClient(_blobConnectionString);
+            var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
+            await containerClient.CreateIfNotExistsAsync();
+            var blobName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+            var blobClient = containerClient.GetBlobClient(blobName);
+            using (var stream = file.OpenReadStream())
+            {
+                await blobClient.UploadAsync(stream);
+            }
+            var url = blobClient.Uri.ToString();
 
             using (var stream = file.OpenReadStream())
             using (var reader = new StreamReader(stream))

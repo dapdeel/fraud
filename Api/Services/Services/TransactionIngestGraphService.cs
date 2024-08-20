@@ -18,6 +18,9 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     private WeightCalculator _WeightCalculator;
     private IElasticSearchService _ElasticSearchService;
     private ElasticClient _Client;
+    private List<Bank> _banks;
+
+    private int BatchSize = 500;
 
     public TransactionIngestGraphService(IGraphService graphService, ApplicationDbContext context, IElasticSearchService ElasticSearchService)
     {
@@ -251,6 +254,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         Indexed = true,
                         FullName = customer.FullName,
                         CustomerId = customer.CustomerId,
+                        Type = "Customer",
                         Node = (int)(Int64)anotherTraversal.Id
                     }
                 ));
@@ -291,6 +295,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                     {
                         AccountId = AccountRecord.AccountId,
                         Indexed = true,
+                        Type = "Account",
                         AccountNumber = AccountRecord.AccountNumber,
                         CustomerId = AccountRecord.CustomerId
                     }));
@@ -340,6 +345,92 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         catch (Exception Exception)
         {
             await _g.Tx().RollbackAsync();
+            return false;
+        }
+    }
+    private void AddCustomerBatch(IReadOnlyCollection<CustomerDocument> documents)
+    {
+        var traversal = _g.V();
+        foreach (var document in documents)
+        {
+            traversal.AddV(JanusService.CustomerNode)
+                      .Property("CustomerId", document.CustomerId)
+                      .Property("Name", document.FullName)
+                      .Property("Phone", document.Phone)
+                      .Property("Email", document.Email).As("C" + document.CustomerId);
+
+            var AccountResponse = _Client.Search<AccountDocument>(a =>
+                        a.Query(q =>
+                        q.Bool(b =>
+                        b.Should(sh =>
+                        sh.Match(sh => sh.Field(f => f.CustomerId).Query(document.CustomerId)),
+                        sh => sh.Term(sh => sh.Field(f => f.Indexed).Value(false)),
+                        sh => sh.Match(sh => sh.Field(f => f.Type).Query("Account"))
+                        ))
+                        ));
+            var customerAccounts = AccountResponse.Documents;
+            foreach (var accountDocument in customerAccounts)
+            {
+                var bank = _banks.Where(b => b.Id == accountDocument.BankId).First();
+                traversal.AddV(JanusService.AccountNode)
+                               .Property("AccountId", accountDocument.AccountId)
+                               .Property("AccountNumber", accountDocument.AccountNumber)
+                               .Property("BankCode", bank.Code)
+                               .Property("Country", bank.Country)
+                               .Property("Balance", accountDocument?.AccountBalance).AddE("Owns").From("C" + document.CustomerId);
+            }
+        }
+    }
+    private async Task<bool> AddCustomerAndAccount()
+    {
+        try
+        {
+            var CountQuery = _Client.Count<CustomerDocument>(c =>
+            c.Query(q =>
+                q.Bool(b => b.Should(
+              //      sh => sh.Term(m => m.Field(f => f.Indexed).Value(false)),
+                    sh => sh.Match(m => m.Field(f => f.Type).Query("Customer"))
+                ))
+                ));
+            var totalBatches = CountQuery.Count / BatchSize;
+            for (var i = 0; i <= totalBatches; i++)
+            {
+                _g.Tx().Begin();
+                var from = i * BatchSize;
+                var Response = _Client.Search<CustomerDocument>(c =>
+                c.From(from).Size(BatchSize).Query(q =>
+                      q.Bool(b => b.Should(
+                    sh => sh.Term(m => m.Field(f => f.Indexed).Value(false)),
+                    sh => sh.Match(m => m.Field(f => f.Type).Query("Customer"))
+                ))
+                ));
+                if (!Response.IsValid)
+                {
+                    throw new ValidateErrorException("Invalid search");
+                }
+                var documents = Response.Documents;
+                AddCustomerBatch(documents);
+                await _g.Tx().CommitAsync();
+            }
+            return true;
+        }
+        catch (Exception exception)
+        {
+            throw new ValidateErrorException("Error Adding to Graph!!! " + exception.Message);
+        }
+    }
+
+    public async Task<bool> RunAnalysis(int ObservatoryId)
+    {
+        connect(ObservatoryId);
+        try
+        {
+            _banks = _context.Banks.ToList();
+            var response = await AddCustomerAndAccount();
+            return true;
+        }
+        catch (Exception exception)
+        {
             return false;
         }
     }

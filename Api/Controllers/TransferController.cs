@@ -15,12 +15,16 @@ public class TransferController : ControllerBase
     private IObservatoryService _observatoryService;
     private IQueuePublisherService _queuePublisherService;
     private ITransferService _service;
+    private ITransactionIngestGraphService _transactionIngestGraphService;
     private readonly IConfiguration _configuration;
     public TransferController(IObservatoryService observatoryService,
-     IQueuePublisherService queuePublisherService, IConfiguration configuration, ITransferService Service)
+     IQueuePublisherService queuePublisherService, IConfiguration configuration,
+     ITransactionIngestGraphService transactionIngestGraphService,
+     ITransferService Service)
     {
         _observatoryService = observatoryService;
         _queuePublisherService = queuePublisherService;
+        _transactionIngestGraphService = transactionIngestGraphService;
         _service = Service;
         _configuration = configuration;
     }
@@ -52,14 +56,14 @@ public class TransferController : ControllerBase
             });
         }
     }
-     [HttpPost("ingest")]
+    [HttpPost("ingest")]
     public async Task<IActionResult> Ingest(TransactionTransferRequest request)
     {
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var observatory = await _observatoryService.Get(request.ObservatoryId, userId);
-            var response =  await _service.Ingest(request);
+            var response = await _service.Ingest(request);
 
             return Ok(new ApiResponse<object>
             {
@@ -78,13 +82,37 @@ public class TransferController : ControllerBase
             });
         }
     }
-    
-      [HttpPost("UploadAndIngest")]
+
+    [HttpPost("UploadAndIngest")]
     public async Task<IActionResult> UploadIngest(IFormFile file)
     {
         try
         {
-           var response = await _service.UploadAndIngest(file);
+            var response = await _service.UploadAndIngest(file);
+
+            return Ok(new ApiResponse<object>
+            {
+                Status = "success",
+                Message = "Successfully Added Record",
+                Data = response
+            });
+        }
+        catch (ValidateErrorException Exception)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = Exception.Message },
+                Message = Exception.Message
+            });
+        }
+    }
+    [HttpPost("RunAnalysis/{ObservatoryId}")]
+    public async Task<IActionResult> RunAnalysis(int ObservatoryId)
+    {
+        try
+        {
+            var response = await _transactionIngestGraphService.RunAnalysis(ObservatoryId);
 
             return Ok(new ApiResponse<object>
             {

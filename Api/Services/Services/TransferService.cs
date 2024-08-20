@@ -228,8 +228,8 @@ public class TransferService : ITransferService
                     FullName = customerRequest.Name,
                     Email = customerRequest.Email,
                     Phone = customerRequest.Phone,
-                    CreatedAt = DateTime.Now
-
+                    CreatedAt = DateTime.Now,
+                    Type = "Customer"
                 };
                 var response = _Client.IndexDocument(Document);
                 return Document;
@@ -245,6 +245,7 @@ public class TransferService : ITransferService
     {
         try
         {
+            // move this to cache
             var Bank = _context.Banks.Where(b => b.Code == accountRequest.BankCode).First();
             var AccountRequest = _Client.Search<AccountDocument>(c =>
                 c.Size(1).Query(q => q.Bool(q => q.Should(
@@ -262,7 +263,8 @@ public class TransferService : ITransferService
                     BankId = Bank.Id,
                     AccountType = accountRequest.AccountType,
                     CustomerId = customer.CustomerId,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTime.Now,
+                    Type = "Account"
                 };
                 _Client.IndexDocument(Account);
                 return Account;
@@ -292,6 +294,7 @@ public class TransferService : ITransferService
                 Description = request.Transaction.Description,
                 TransactionType = TransactionType.Transfer,
                 TransactionDate = request.Transaction.TransactionDate.ToUniversalTime(),
+                Type = "Transaction"
             };
 
             _Client.IndexDocument(transaction);
@@ -321,7 +324,8 @@ public class TransferService : ITransferService
                     ProfileId = Guid.NewGuid().ToString(),
                     DeviceId = request.DeviceId,
                     DeviceType = request.DeviceType,
-                    IpAddress = request.IpAddress
+                    IpAddress = request.IpAddress,
+                    Type = "Account"
                 };
                 _Client.IndexDocument(profile);
                 return profile;
@@ -379,7 +383,7 @@ public class TransferService : ITransferService
                 foreach (var record in records)
                 {
                     var request = MakeRequest(record);
-                    await Ingest(request);
+                    Ingest(request);
                 }
             }
         }

@@ -138,6 +138,18 @@ public class ObservatoryService : IObservatoryService
         return errors;
     }
 
+    public async Task<List<Observatory>> GetInvitedObservatoriesByUserId(string userId)
+    {
+        var invitedObservatories = await _context.UserObservatories
+            .Where(uo => uo.UserId == userId && uo.Status == Status.Invited)
+            .OrderByDescending(uo => uo.CreatedAt)
+            .Select(uo => uo.Observatory)
+            .ToListAsync();
+
+        return invitedObservatories;
+    }
+
+
     public async Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId)
     {
 
@@ -165,9 +177,6 @@ public class ObservatoryService : IObservatoryService
             PendingInvites = pendingInvites.Any() ? pendingInvites : null
         };
     }
-
-
-
 
     public List<string> Errors()
     {
@@ -198,7 +207,6 @@ public class ObservatoryService : IObservatoryService
 
         return observatories;
     }
-
 
 
     // Helper Methods

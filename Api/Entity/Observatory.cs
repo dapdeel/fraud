@@ -26,6 +26,7 @@ public class Observatory
     public string? GraphDatabase { get; set; }
     public string? GraphUser { get; set; }
     public string? GraphPassword { get; set; }
+    public string? ElasticSearchHost { get; set; }
     public ObservatoryType? ObservatoryType { get; set; }
     public int BankId { get; set; }
     public Bank? Bank { get; set; }

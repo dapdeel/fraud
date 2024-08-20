@@ -4,44 +4,69 @@ using Api.Models;
 using Api.Models.Data;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
+using Gremlin.Net.Structure;
+using Nest;
 
 public class TransactionIngestGraphService : ITransactionIngestGraphService
 {
     private IGraphService _graphService;
     private readonly ApplicationDbContext _context;
     private GraphTraversalSource _g;
+    private GraphTraversal<Vertex, Vertex> Traversal;
     private JanusGraphConnector _connector;
     private FrequencyCalculator _FrequencyCalculator;
     private WeightCalculator _WeightCalculator;
+    private IElasticSearchService _ElasticSearchService;
+    private ElasticClient _Client;
 
-    public TransactionIngestGraphService(IGraphService graphService, ApplicationDbContext context)
+    public TransactionIngestGraphService(IGraphService graphService, ApplicationDbContext context, IElasticSearchService ElasticSearchService)
     {
         _graphService = graphService;
+        _ElasticSearchService = ElasticSearchService;
         _FrequencyCalculator = new FrequencyCalculator();
         _WeightCalculator = new WeightCalculator();
         _context = context;
     }
-    private bool connect()
+    private bool connect(int ObservatoryId)
     {
         try
         {
-            _connector = _graphService.connect();
+            _connector = _graphService.connect(ObservatoryId);
+            _Client = ElasticClient(ObservatoryId);
             _g = _connector.traversal();
-            return true;    
+            return true;
         }
         catch (Exception exception)
         {
             throw new ValidateErrorException("Could not connect tor Graph, Please check connection or contact Admin " + exception.Message);
         }
     }
+    private ElasticClient ElasticClient(int ObservatoryId, bool Refresh = false)
+    {
+        var Observatory = _context.Observatories.Find(ObservatoryId);
+        if (Observatory == null || Observatory.UseDefault)
+        {
+            _Client = _ElasticSearchService.connect();
+            return _Client;
+        }
+        var Host = Observatory.ElasticSearchHost;
+        if (Host == null)
+        {
+            throw new ValidateErrorException("Unable to connect to Elastic Search");
+        }
+        _Client = _ElasticSearchService.connect(Host);
+        return _Client;
+
+    }
     public async Task<bool> IngestTransactionInGraph(TransactionIngestData data)
     {
-        connect();
+        connect(data.ObservatoryId);
         try
         {
+
             var DebitCustomerAdded = AddCustomer(data.DebitCustomer);
-            var CreditCustomerAdded = AddCustomer(data.CreditCustomer);
             var DebitAccountAdded = AddAccount(data.DebitAccount);
+            var CreditCustomerAdded = AddCustomer(data.CreditCustomer);
             var CreditAccountAdded = AddAccount(data.CreditAccount);
 
             var UserEdge = AddUserAccountEdge(data.DebitCustomer, data.DebitAccount);
@@ -62,10 +87,10 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             var AccountEdge = await AddAccountEdge(DebitAccountNode: DebitAccountNodeId, CreditAccountNode: CreditAccountNodeId,
                                  TransactionDate: data.Transaction.TransactionDate, Amount: data.Transaction.Amount);
 
-            if (data.TransactionProfile != null)
-            {
-                var AddedDevice = AddDevice(data.TransactionProfile, data.Transaction, data.DebitCustomer);
-            }
+            // if (data.TransactionProfile != null)
+            // {
+            //     var AddedDevice = AddDevice(data.TransactionProfile, data.Transaction, data.DebitCustomer);
+            // }
             if (TransactionAdded)
             {
                 var transaction = _context.Transactions.Where(t => t.PlatformId == data.Transaction.PlatformId).FirstOrDefault();
@@ -88,12 +113,11 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         return true;
     }
-    private async Task<bool> AddUserAccountEdge(TransactionCustomer Customer, TransactionAccount Account)
+    private async Task<bool> AddUserAccountEdge(CustomerDocument Customer, AccountDocument Account)
     {
         // var g = _connector.traversal();
         try
         {
-
             _g.Tx().Begin();
             var DebitEdgeExists = _g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", Customer.CustomerId)
               .OutE("Owns")
@@ -167,7 +191,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
     }
 
-    private async Task<bool> AddTransaction(Transaction Transaction, TransactionAccount DebitAccount, TransactionAccount CreditAccount)
+    private async Task<bool> AddTransaction(TransactionDocument Transaction, AccountDocument DebitAccount, AccountDocument CreditAccount)
     {
         // var g = _connector.traversal();
         try
@@ -201,68 +225,76 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             return false;
         }
     }
-    private async Task<bool> AddCustomer(TransactionCustomer Customer)
+    private bool AddCustomer(CustomerDocument Customer)
     {
         try
         {
-           _g.Tx().Begin();
-            var customerGraphId = _g.V()
-                .HasLabel(JanusService.CustomerNode)
-                .Has("CustomerId", Customer.CustomerId).Id();
-            if (customerGraphId.HasNext())
+            var query = _Client.Search<CustomerDocument>(s =>
+            s.Query(q => q.Match(m => m.Field(f => f.CustomerId)
+            .Query(Customer.CustomerId))));
+            var customer = query.Documents.FirstOrDefault();
+            if (customer == null)
             {
-                var customerNode = customerGraphId.Next();
-                _g.V(customerNode).Property("Phone", Customer.Phone)
-                .Property("Email", Customer.Email)
-                .Property("Name", Customer.FullName).Next();
+                throw new ValidateErrorException("Invalid Customer");
             }
-            else
+            if (customer.Indexed == false)
             {
-
-                _g.AddV(JanusService.CustomerNode)
-                    .Property("CustomerId", Customer.CustomerId)
-                    .Property("Name", Customer.FullName)
-                    .Property("Phone", Customer.Phone)
-                    .Property("Email", Customer.Email).Next();
+                Traversal = _g.AddV(JanusService.CustomerNode)
+                     .Property("CustomerId", Customer.CustomerId)
+                     .Property("Name", Customer.FullName)
+                     .Property("Phone", Customer.Phone)
+                     .Property("Email", Customer.Email);
+                var anotherTraversal = Traversal.Next();
+                _Client.Update<CustomerDocument>(customer.CustomerId, c => c.Doc(
+                    new CustomerDocument
+                    {
+                        Indexed = true,
+                        FullName = customer.FullName,
+                        CustomerId = customer.CustomerId,
+                        Node = (int)(Int64)anotherTraversal.Id
+                    }
+                ));
             }
-            await _g.Tx().CommitAsync();
             return true;
+
         }
         catch (Exception exception)
         {
-            await _g.Tx().RollbackAsync();
-            return false;
+
+            throw new ValidateErrorException(exception.Message);
         }
 
     }
-    private async Task<bool> AddAccount(TransactionAccount Account)
+    private async Task<bool> AddAccount(AccountDocument Account)
     {
-        // var g = _connector.traversal();
         try
         {
-
-            _g.Tx().Begin();
             var bank = _context.Banks.First(b => b.Id == Account.BankId);
-            var accountGraph = _g.V()
-                    .HasLabel(JanusService.AccountNode)
-                   .Has("AccountNumber", Account.AccountNumber)
-                   .Has("BankCode", bank.Code)
-                   .Id();
-            if (accountGraph.HasNext())
+            var query = _Client.Search<AccountDocument>(s =>
+           s.Query(q => q.Match(m => m.Field(f => f.CustomerId)
+           .Query(Account.AccountId))));
+            var AccountRecord = query.Documents.FirstOrDefault();
+            if (AccountRecord == null)
             {
-                var accountNode = accountGraph.Next();
-                _g.V(accountNode).Property("Balance", Account.AccountBalance).Next();
+                throw new ValidateErrorException("Invalid Account");
             }
-            else
+            if (AccountRecord.Indexed == false)
             {
-                _g.AddV(JanusService.AccountNode)
-                    .Property("AccountId", Account.AccountId)
-                    .Property("AccountNumber", Account.AccountNumber)
-                    .Property("BankCode", bank?.Code)
-                    .Property("Country", bank?.Country)
-                    .Property("Balance", Account?.AccountBalance).Next();
+                Traversal = Traversal.AddV(JanusService.AccountNode)
+                               .Property("AccountId", Account.AccountId)
+                               .Property("AccountNumber", Account.AccountNumber)
+                               .Property("BankCode", bank?.Code)
+                               .Property("Country", bank?.Country)
+                               .Property("Balance", Account?.AccountBalance);
+                _Client.Update<AccountDocument>(AccountRecord.AccountId, a => a.Doc(
+                    new AccountDocument
+                    {
+                        AccountId = AccountRecord.AccountId,
+                        Indexed = true,
+                        AccountNumber = AccountRecord.AccountNumber,
+                        CustomerId = AccountRecord.CustomerId
+                    }));
             }
-            await _g.Tx().CommitAsync();
             return true;
         }
         catch (Exception exception)

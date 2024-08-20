@@ -10,37 +10,58 @@ using CsvHelper;
 using System.Globalization;
 using Newtonsoft.Json;
 using CsvHelper.Configuration;
+using Nest;
+using System.Text;
 
 public class TransferService : ITransferService
 {
     IGraphService _graphService;
     private readonly ApplicationDbContext _context;
 
-    private FrequencyCalculator _FrequencyCalculator;
-    private ITransactionIngestGraphService _TransactionGraphService;
-    private WeightCalculator _WeightCalculator;
-
     private IQueuePublisherService _queuePublisherService;
     private readonly string? _blobConnectionString;
     private readonly string? _blobContainerName;
     private IConfiguration _configuration;
+    private IElasticSearchService _ElasticSearchService;
+
+    private ElasticClient _Client;
 
     public TransferService(IGraphService graphService, ApplicationDbContext context,
     ITransactionIngestGraphService TransactionGraphService,
-    IQueuePublisherService queuePublisherService, IConfiguration configuration)
+    IQueuePublisherService queuePublisherService, IConfiguration configuration, IElasticSearchService ElasticSearchService)
     {
         _graphService = graphService;
-        _TransactionGraphService = TransactionGraphService;
-        _FrequencyCalculator = new FrequencyCalculator();
-        _WeightCalculator = new WeightCalculator();
         _configuration = configuration;
         _context = context;
         _queuePublisherService = queuePublisherService;
+        _ElasticSearchService = ElasticSearchService;
         _blobConnectionString = _configuration.GetSection("AzureBlobStorage:ConnectionString").Value;
         _blobContainerName = _configuration.GetSection("AzureBlobStorage:ContainerName").Value;
     }
-    public async Task<Api.Models.Transaction> Ingest(TransactionTransferRequest request)
+    private ElasticClient ElasticClient(int ObservatoryId, bool Refresh = false)
     {
+        if (!Refresh && _Client != null)
+        {
+            return _Client;
+        }
+        var Observatory = _context.Observatories.Find(ObservatoryId);
+        if (Observatory == null || Observatory.UseDefault)
+        {
+            _Client = _ElasticSearchService.connect();
+            return _Client;
+        }
+        var Host = Observatory.ElasticSearchHost;
+        if (!Observatory.UseDefault && Host == null)
+        {
+            throw new ValidateErrorException("Unable to connect to Elastic Search");
+        }
+        _Client = _ElasticSearchService.connect(Host);
+        return _Client;
+
+    }
+    public async Task<TransactionDocument> Ingest(TransactionTransferRequest request)
+    {
+        ElasticClient(request.ObservatoryId);
         List<string> errors = ValidateTransactionTransfer(request);
         if (errors.Count > 0)
         {
@@ -48,14 +69,13 @@ public class TransferService : ITransferService
         }
         try
         {
+            var DebitCustomer = AddCustomer(request.DebitCustomer);
+            var DebitAccount = AddAccount(request.DebitCustomer.Account, DebitCustomer);
 
-            var DebitCustomer = await AddCustomer(request.DebitCustomer);
-            var DebitAccount = await AddAccount(request.DebitCustomer.Account, DebitCustomer);
+            var CreditCustomer = AddCustomer(request.CreditCustomer);
+            var CreditAccount = AddAccount(request.CreditCustomer.Account, CreditCustomer);
 
-            var CreditCustomer = await AddCustomer(request.CreditCustomer);
-            var CreditAccount = await AddAccount(request.CreditCustomer.Account, CreditCustomer);
-
-            var transaction = await AddTransaction(request, DebitAccount, CreditAccount);
+            var transaction = AddTransaction(request, DebitAccount, CreditAccount);
 
             var TransactionData = new TransactionIngestData
             {
@@ -63,18 +83,27 @@ public class TransferService : ITransferService
                 DebitAccount = DebitAccount,
                 CreditCustomer = CreditCustomer,
                 CreditAccount = CreditAccount,
-                Transaction = transaction
+                Transaction = transaction,
+                ObservatoryId = request.ObservatoryId
             };
             if (request.DebitCustomer.Device != null && request.DebitCustomer.Device?.DeviceId != null)
             {
                 var TransactionProfile = await AddDevice(request.DebitCustomer.Device, DebitCustomer, transaction);
-                TransactionData.TransactionProfile = TransactionProfile;
+                TransactionData.Device = TransactionProfile;
             }
 
-            var successfullyIndexed = await _TransactionGraphService.IngestTransactionInGraph(TransactionData);
-            transaction.Indexed = successfullyIndexed;
-            _context.Update(transaction);
-            _context.SaveChanges();
+            //  //   var successfullyIndexed = await _TransactionGraphService.IngestTransactionInGraph(TransactionData);
+            //     _Client.Update<TransactionDocument>(transaction.PlatformId, t => t.Doc(
+            //         new TransactionDocument
+            //         {
+            //             Indexed = successfullyIndexed,
+            //             TransactionId = transaction.TransactionId,
+            //             DebitAccountId = transaction.DebitAccountId,
+            //             CreditAccountId = transaction.CreditAccountId,
+            //             PlatformId = transaction.PlatformId,
+            //             Amount = transaction.Amount
+            //         }
+            //         ));
             return transaction;
 
         }
@@ -83,25 +112,6 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    private bool IngestTransactionInGraph(TransactionIngestData data)
-    {
-        var connector = _graphService.connect();
-        var g = connector.traversal();
-        try
-        {
-            g.Tx().Begin();
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-        finally
-        {
-            connector.Client().Dispose();
-        }
-        return true;
-    }
-
     public async Task<bool> UploadAndIngest(IFormFile file)
     {
         if (file == null || file.Length == 0)
@@ -125,24 +135,18 @@ public class TransferService : ITransferService
                 await blobClient.UploadAsync(stream);
             }
             var url = blobClient.Uri.ToString();
-
-            using (var stream = file.OpenReadStream())
-            using (var reader = new StreamReader(stream))
-            using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture){
-                     HasHeaderRecord = true 
-            }))
+            var fileRequestUrl = new FileData
             {
-                var records = csv.GetRecords<TransactionCsvRecord>().ToList();
-
-                // Process the CSV records
-                foreach (var record in records)
-                {
-                    var request = MakeRequest(record);
-                    var requestString = JsonConvert.SerializeObject(request);
-                    var queueName = _configuration.GetValue<string>("IngestQueueName");
-                    _queuePublisherService.Publish(queueName, requestString);
-                }
+                Url = url,
+                Name = blobName
+            };
+            var requestString = JsonConvert.SerializeObject(fileRequestUrl);
+            var IngestFileQueueName = _configuration.GetValue<string>("IngestFileQueueName");
+            if (IngestFileQueueName == null)
+            {
+                throw new ValidateErrorException("Invalid Queue Name");
             }
+            _queuePublisherService.Publish(IngestFileQueueName, requestString);
 
             return true;
         }
@@ -204,132 +208,66 @@ public class TransferService : ITransferService
         return request;
 
     }
-    private async Task<TransactionCustomer> AddCustomer(CustomerRequest customerRequest)
+    private CustomerDocument AddCustomer(CustomerRequest customerRequest)
     {
+
         try
         {
-            var Customer = _context.TransactionCustomers
-            .Where(tc => tc.Email == customerRequest.Email || tc.Phone == customerRequest.Phone)
-            .FirstOrDefault();
+            var CustomerRequest =
+            _Client.Search<CustomerDocument>(c =>
+            c.Size(1).Query(q => q.Bool(q => q.Should(
+            sh => sh.Match(m => m.Field(f => f.Email).Query(customerRequest.Email)),
+            sh => sh.Match(m => m.Field(f => f.Phone).Query(customerRequest.Phone))
+            ))));
 
-            if (Customer == null)
+            if (CustomerRequest.Documents.Count <= 0)
             {
-                Customer = new TransactionCustomer
+                var Document = new CustomerDocument
                 {
                     CustomerId = Guid.NewGuid().ToString(),
                     FullName = customerRequest.Name,
                     Email = customerRequest.Email,
                     Phone = customerRequest.Phone,
+                    CreatedAt = DateTime.Now
+
                 };
-                _context.TransactionCustomers.Add(Customer);
-                _context.SaveChanges();
+                var response = _Client.IndexDocument(Document);
+                return Document;
             }
-            else
-            {
-                Customer.Phone = customerRequest.Phone;
-                Customer.Email = customerRequest.Email;
-                Customer.FullName = customerRequest.Name;
-                _context.TransactionCustomers.Update(Customer);
-                _context.SaveChanges();
-
-            }
-            return Customer;
+            return CustomerRequest.Documents.First();
         }
         catch (Exception Exception)
         {
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    private async Task<bool> AddAccountEdge(object? DebitAccountNode, object? CreditAccountNode, DateTime TransactionDate, float Amount)
-    {
-        var connector = _graphService.connect();
-        var g = connector.traversal();
-        if (DebitAccountNode == null || CreditAccountNode == null)
-        {
-            throw new ValidateErrorException("There were issues in Adding Relationship to the Transaction ");
-        }
-        try
-        {
-            g.Tx().Begin();
-            var relationship = g.V(DebitAccountNode).BothE("Transfered").Where(__.OtherV().HasId(CreditAccountNode)).Id();
-            if (relationship.HasNext())
-            {
-                var EdgeId = relationship.Next();
-                var LastEMEA = g.E(EdgeId).Values<double>("LastEMEA").Next();
-                var LastTransactionDate = DateTime.Parse(g.E(EdgeId).Values<string>("LastTransactionDate").Next());
-                var LastWeight = g.E(EdgeId).Values<double>("LastWeight").Next();
-                var TransactionCount = g.E(EdgeId).Values<int>("TransactionCount").Next();
-                var EMEA = _FrequencyCalculator.Calculate(LastEMEA, TransactionDate, LastTransactionDate);
-                var Weight = _WeightCalculator.Calculate(EMEA, Amount, LastTransactionDate);
-
-                var edge = g.E(EdgeId);
-                edge = edge.Property("LastEMEA", EMEA);
-                edge = edge.Property("LastTransactionDate", TransactionDate);
-                edge = edge.Property("LastWeight", Weight);
-                edge = edge.Property("TransactionCount", TransactionCount + 1);
-                edge.Next();
-            }
-            else
-            {
-
-                var EMEA = _FrequencyCalculator.Calculate();
-                var Weight = _WeightCalculator.Calculate(EMEA, Amount);
-                g.V(DebitAccountNode).HasLabel(JanusService.AccountNode)
-                      .As("D").V(CreditAccountNode).HasLabel(JanusService.AccountNode)
-                      .AddE("Transfered").From("D")
-                      .Property("LastEMEA", EMEA)
-                      .Property("LastTransactionDate", TransactionDate)
-                      .Property("LastWeight", Weight)
-                      .Property("TransactionCount", 1)
-                      .Next();
-            }
-            await g.Tx().CommitAsync();
-            return true;
-        }
-        catch (Exception Exception)
-        {
-            await g.Tx().RollbackAsync();
-            throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
-        }
-        finally
-        {
-            connector.Client().Dispose();
-        }
-    }
-    private async Task<TransactionAccount> AddAccount(AccountRequest accountRequest, TransactionCustomer customer)
+    private AccountDocument AddAccount(AccountRequest accountRequest, CustomerDocument customer)
     {
         try
         {
             var Bank = _context.Banks.Where(b => b.Code == accountRequest.BankCode).First();
+            var AccountRequest = _Client.Search<AccountDocument>(c =>
+                c.Size(1).Query(q => q.Bool(q => q.Should(
+                sh => sh.Match(m => m.Field(f => f.AccountNumber).Query(accountRequest.AccountNumber)),
+                sh => sh.Term(m => m.Field(f => f.BankId).Value(Bank.Id))
+                ))));
 
-            var Account = _context.TransactionAccounts
-            .Where(tc => tc.AccountNumber == accountRequest.AccountNumber && tc.BankId == Bank.Id)
-            .FirstOrDefault();
-
-            if (Account == null)
+            if (AccountRequest.Documents.Count <= 0)
             {
-                Account = new TransactionAccount
+                var Account = new AccountDocument
                 {
                     AccountNumber = accountRequest.AccountNumber,
                     AccountBalance = accountRequest.Balance,
                     AccountId = Guid.NewGuid().ToString(),
                     BankId = Bank.Id,
                     AccountType = accountRequest.AccountType,
-                    CustomerId = customer.Id
-
+                    CustomerId = customer.CustomerId,
+                    CreatedAt = DateTime.Now
                 };
-                _context.TransactionAccounts.Add(Account);
-                _context.SaveChanges();
-
+                _Client.IndexDocument(Account);
+                return Account;
             }
-            else
-            {
-                Account.AccountBalance = accountRequest.Balance;
-                _context.TransactionAccounts.Update(Account);
-                _context.SaveChanges();
-            }
-
-            return Account;
+            return AccountRequest.Documents.First();
         }
         catch (Exception Exception)
         {
@@ -337,54 +275,26 @@ public class TransferService : ITransferService
         }
     }
 
-    private async Task<Api.Models.Transaction> AddTransaction(TransactionTransferRequest request, TransactionAccount debitAccount, TransactionAccount creditAccount)
+    private TransactionDocument AddTransaction(TransactionTransferRequest request, AccountDocument debitAccount, AccountDocument creditAccount)
     {
         try
         {
-            var transaction = new Api.Models.Transaction
+            var transaction = new TransactionDocument
             {
                 Amount = request.Transaction.Amount,
                 ObservatoryId = request.ObservatoryId,
                 PlatformId = Guid.NewGuid().ToString(),
                 TransactionId = request.Transaction.TransactionId,
-                CreditAccountId = creditAccount.Id,
-                DebitAccountId = debitAccount.Id,
+                CreditAccountId = creditAccount.AccountId,
+                DebitAccountId = debitAccount.AccountId,
+                CreatedAt = DateTime.Now,
                 Currency = request.Transaction.Currency,
                 Description = request.Transaction.Description,
                 TransactionType = TransactionType.Transfer,
                 TransactionDate = request.Transaction.TransactionDate.ToUniversalTime(),
             };
-            _context.Transactions.Add(transaction);
-            _context.SaveChanges();
-            //     g.AddV(JanusService.TransactionNode)
-            //         .Property("Id", transaction.Id)
-            //         .Property("TransactionId", transaction.TransactionId)
-            //         .Property("Amount", transaction.Amount)
-            //         .Property("TransactionDate", transaction.TransactionDate)
-            //         .Property("Timestamp", DateTime.UtcNow)
-            //         .Property("Type", TransactionType.Withdrawal)
-            //         .Property("Currency", transaction.Currency)
-            //         .Property("Description", transaction.Description)
-            //         .Property("ObservatoryId", transaction.ObservatoryId)
-            //         .Next();
 
-            //     g.V().Has(JanusService.AccountNode, "Id", debitAccount.Id).As("A1")
-            //    .V().Has(JanusService.TransactionNode, "Id", transaction.Id).AddE("SENT")
-            //    .From("A1").Property("CreatedAt", transaction.CreatedAt).Next();
-
-            //     g.V().Has(JanusService.TransactionNode, "Id", transaction.Id)
-            //     .As("T1").V().Has(JanusService.AccountNode, "Id", creditAccount.Id)
-            //     .AddE("RECEIVED").From("T1").Property("CreatedAt", transaction.CreatedAt).Next();
-
-            // var DebitAccountNodeId = g.V()
-            //          .HasLabel(JanusService.AccountNode)
-            //         .Has("Id", debitAccount.Id).Id().Next();
-            // var CreditAccountNodeId = g.V()
-            //          .HasLabel(JanusService.AccountNode)
-            //         .Has("Id", creditAccount.Id).Id().Next();
-
-            // var added = await AddAccountEdge(DebitAccountNodeId, CreditAccountNodeId, transaction.TransactionDate, transaction.Amount);
-
+            _Client.IndexDocument(transaction);
             return transaction;
         }
         catch (Exception Exception)
@@ -393,21 +303,30 @@ public class TransferService : ITransferService
         }
 
     }
-    private async Task<Api.Models.TransactionProfile> AddDevice(DeviceRequest request, TransactionCustomer customer, Api.Models.Transaction transaction)
+    private async Task<DeviceDocument> AddDevice(DeviceRequest request, CustomerDocument customer, TransactionDocument transaction)
     {
         try
         {
-            var profile = new Api.Models.TransactionProfile
+            var ProfileRequest =
+           _Client.Search<DeviceDocument>(c =>
+           c.Size(1).Query(q => q.Bool(q => q.Should(
+           sh => sh.Match(m => m.Field(f => f.DeviceId).Query(request.DeviceId)),
+           sh => sh.Match(m => m.Field(f => f.CustomerId).Query(customer.CustomerId))
+           ))));
+            if (ProfileRequest.Documents.Count <= 1)
             {
-                CustomerId = customer.Id,
-                ProfileId = Guid.NewGuid().ToString(),
-                DeviceId = request.DeviceId,
-                DeviceType = request.DeviceType,
-                IpAddress = request.IpAddress
-            };
-            _context.TransactionProfiles.Add(profile);
-            _context.SaveChanges();
-            return profile;
+                var profile = new DeviceDocument
+                {
+                    CustomerId = customer.CustomerId,
+                    ProfileId = Guid.NewGuid().ToString(),
+                    DeviceId = request.DeviceId,
+                    DeviceType = request.DeviceType,
+                    IpAddress = request.IpAddress
+                };
+                _Client.IndexDocument(profile);
+                return profile;
+            }
+            return ProfileRequest.Documents.First();
         }
         catch (Exception Exception)
         {
@@ -433,5 +352,37 @@ public class TransferService : ITransferService
         }
 
         return errors;
+    }
+
+    public async Task<bool> DownloadFileAndIngest(FileData data)
+    {
+
+        var blobServiceClient = new BlobServiceClient(_blobConnectionString);
+        var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
+        BlobClient blobClient = containerClient.GetBlobClient(data.Name);
+        using (var memoryStream = new MemoryStream())
+        {
+            await blobClient.DownloadToAsync(memoryStream);
+
+            // Reset the stream position to the beginning
+            memoryStream.Position = 0;
+
+            using (var reader = new StreamReader(memoryStream))
+            using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = true
+            }))
+            {
+                var records = csv.GetRecords<TransactionCsvRecord>().ToList();
+
+                // Process the CSV records
+                foreach (var record in records)
+                {
+                    var request = MakeRequest(record);
+                    await Ingest(request);
+                }
+            }
+        }
+        return true;
     }
 }

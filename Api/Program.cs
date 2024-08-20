@@ -129,7 +129,9 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddTransient<IGraphService, JanusService>();
     builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
     builder.Services.AddHostedService<TransferIngestConsumerService>();
+    builder.Services.AddHostedService<FileReaderConsumerService>();
     builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
     builder.Services.AddTransient<ITransactionIngestGraphService, TransactionIngestGraphService>();
     builder.Services.AddScoped<ITransactionTracingGraphService, TransactionTracingGraphService>();
+    builder.Services.AddScoped<IElasticSearchService,ElasticSearchService>();
 }

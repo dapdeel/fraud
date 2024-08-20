@@ -23,15 +23,17 @@ public class TransferService : ITransferService
     private readonly string? _blobContainerName;
     private IConfiguration _configuration;
     private IElasticSearchService _ElasticSearchService;
-
+    private ITransactionIngestGraphService _graphIngestService;
     private ElasticClient _Client;
 
     public TransferService(IGraphService graphService, ApplicationDbContext context,
     ITransactionIngestGraphService TransactionGraphService,
-    IQueuePublisherService queuePublisherService, IConfiguration configuration, IElasticSearchService ElasticSearchService)
+    IQueuePublisherService queuePublisherService, IConfiguration configuration, 
+    IElasticSearchService ElasticSearchService)
     {
         _graphService = graphService;
         _configuration = configuration;
+        _graphIngestService = TransactionGraphService;
         _context = context;
         _queuePublisherService = queuePublisherService;
         _ElasticSearchService = ElasticSearchService;
@@ -112,7 +114,7 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    public async Task<bool> UploadAndIngest(IFormFile file)
+    public async Task<bool> UploadAndIngest(int ObservatoryId, IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
@@ -138,7 +140,8 @@ public class TransferService : ITransferService
             var fileRequestUrl = new FileData
             {
                 Url = url,
-                Name = blobName
+                Name = blobName,
+                ObservatoryId = ObservatoryId
             };
             var requestString = JsonConvert.SerializeObject(fileRequestUrl);
             var IngestFileQueueName = _configuration.GetValue<string>("IngestFileQueueName");
@@ -383,8 +386,9 @@ public class TransferService : ITransferService
                 foreach (var record in records)
                 {
                     var request = MakeRequest(record);
-                    Ingest(request);
+                    await Ingest(request);
                 }
+                await _graphIngestService.RunAnalysis(data.ObservatoryId);
             }
         }
         return true;

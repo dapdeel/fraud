@@ -5,6 +5,7 @@ using Api.Models.Data;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
 using Gremlin.Net.Structure;
+using Microsoft.AspNetCore.CookiePolicy;
 using Nest;
 
 public class TransactionIngestGraphService : ITransactionIngestGraphService
@@ -67,10 +68,10 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
 
-            var DebitCustomerAdded = AddCustomer(data.DebitCustomer);
-            var DebitAccountAdded = AddAccount(data.DebitAccount);
-            var CreditCustomerAdded = AddCustomer(data.CreditCustomer);
-            var CreditAccountAdded = AddAccount(data.CreditAccount);
+            // var DebitCustomerAdded = AddCustomer(data.DebitCustomer);
+            // var DebitAccountAdded = AddAccount(data.DebitAccount);
+            // var CreditCustomerAdded = AddCustomer(data.CreditCustomer);
+            // var CreditAccountAdded = AddAccount(data.CreditAccount);
 
             var UserEdge = AddUserAccountEdge(data.DebitCustomer, data.DebitAccount);
             var CreditUserEdge = AddUserAccountEdge(data.CreditCustomer, data.CreditAccount);
@@ -228,88 +229,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             return false;
         }
     }
-    private bool AddCustomer(CustomerDocument Customer)
-    {
-        try
-        {
-            var query = _Client.Search<CustomerDocument>(s =>
-            s.Query(q => q.Match(m => m.Field(f => f.CustomerId)
-            .Query(Customer.CustomerId))));
-            var customer = query.Documents.FirstOrDefault();
-            if (customer == null)
-            {
-                throw new ValidateErrorException("Invalid Customer");
-            }
-            if (customer.Indexed == false)
-            {
-                Traversal = _g.AddV(JanusService.CustomerNode)
-                     .Property("CustomerId", Customer.CustomerId)
-                     .Property("Name", Customer.FullName)
-                     .Property("Phone", Customer.Phone)
-                     .Property("Email", Customer.Email);
-                var anotherTraversal = Traversal.Next();
-                _Client.Update<CustomerDocument>(customer.CustomerId, c => c.Doc(
-                    new CustomerDocument
-                    {
-                        Indexed = true,
-                        FullName = customer.FullName,
-                        CustomerId = customer.CustomerId,
-                        Type = "Customer",
-                        Node = (int)(Int64)anotherTraversal.Id
-                    }
-                ));
-            }
-            return true;
-
-        }
-        catch (Exception exception)
-        {
-
-            throw new ValidateErrorException(exception.Message);
-        }
-
-    }
-    private async Task<bool> AddAccount(AccountDocument Account)
-    {
-        try
-        {
-            var bank = _context.Banks.First(b => b.Id == Account.BankId);
-            var query = _Client.Search<AccountDocument>(s =>
-           s.Query(q => q.Match(m => m.Field(f => f.CustomerId)
-           .Query(Account.AccountId))));
-            var AccountRecord = query.Documents.FirstOrDefault();
-            if (AccountRecord == null)
-            {
-                throw new ValidateErrorException("Invalid Account");
-            }
-            if (AccountRecord.Indexed == false)
-            {
-                Traversal = Traversal.AddV(JanusService.AccountNode)
-                               .Property("AccountId", Account.AccountId)
-                               .Property("AccountNumber", Account.AccountNumber)
-                               .Property("BankCode", bank?.Code)
-                               .Property("Country", bank?.Country)
-                               .Property("Balance", Account?.AccountBalance);
-                _Client.Update<AccountDocument>(AccountRecord.AccountId, a => a.Doc(
-                    new AccountDocument
-                    {
-                        AccountId = AccountRecord.AccountId,
-                        Indexed = true,
-                        Type = "Account",
-                        AccountNumber = AccountRecord.AccountNumber,
-                        CustomerId = AccountRecord.CustomerId
-                    }));
-            }
-            return true;
-        }
-        catch (Exception exception)
-        {
-            await _g.Tx().RollbackAsync();
-            return false;
-        }
-
-    }
-
     private async Task<bool> AddDevice(TransactionProfile TransactionProfile, Transaction Transaction, TransactionCustomer Customer)
     {
         // var g = _connector.traversal();
@@ -348,37 +267,66 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             return false;
         }
     }
-    private void AddCustomerBatch(IReadOnlyCollection<CustomerDocument> documents)
+    private async Task<bool> AddCustomerBatch(ISearchResponse<CustomerDocument> documents)
     {
-        var traversal = _g.V();
-        foreach (var document in documents)
+        try
         {
-            traversal.AddV(JanusService.CustomerNode)
-                      .Property("CustomerId", document.CustomerId)
-                      .Property("Name", document.FullName)
-                      .Property("Phone", document.Phone)
-                      .Property("Email", document.Email).As("C" + document.CustomerId);
-
-            var AccountResponse = _Client.Search<AccountDocument>(a =>
-                        a.Query(q =>
-                        q.Bool(b =>
-                        b.Must(sh =>
-                        sh.Match(sh => sh.Field(f => f.CustomerId).Query(document.CustomerId)),
-                        sh => sh.Term(sh => sh.Field(f => f.Indexed).Value(false)),
-                        sh => sh.Match(sh => sh.Field(f => f.Type).Query("Account"))
-                        ))
-                        ));
-            var customerAccounts = AccountResponse.Documents;
-            foreach (var accountDocument in customerAccounts)
+            _g.Tx().Begin();
+            var traversal = _g.V();
+            foreach (var hit in documents.Hits)
             {
-                var bank = _banks.Where(b => b.Id == accountDocument.BankId).First();
-                traversal.AddV(JanusService.AccountNode)
-                               .Property("AccountId", accountDocument.AccountId)
-                               .Property("AccountNumber", accountDocument.AccountNumber)
-                               .Property("BankCode", bank.Code)
-                               .Property("Country", bank.Country)
-                               .Property("Balance", accountDocument?.AccountBalance).AddE("Owns").From("C" + document.CustomerId);
+                var document = hit.Source;
+                var documentId = hit.Id;
+                traversal.AddV(JanusService.CustomerNode)
+                          .Property("CustomerId", document.CustomerId)
+                          .Property("Name", document.FullName)
+                          .Property("Phone", document.Phone)
+                          .Property("Email", document.Email).As("C" + document.CustomerId);
+
+                var AccountResponse = _Client.Search<AccountDocument>(a =>
+                            a.Query(q =>
+                            q.Bool(b =>
+                            b.Must(sh =>
+                            sh.Match(sh => sh.Field(f => f.CustomerId).Query(document.CustomerId)),
+                            sh => sh.Term(sh => sh.Field(f => f.Indexed).Value(false)),
+                            sh => sh.Match(sh => sh.Field(f => f.Type).Query("Account"))
+                            ))
+                            ));
+                foreach (var accountHit in AccountResponse.Hits)
+                {
+                    var accountDocument = accountHit.Source;
+                    var accountDocumentId = accountHit.Id;
+                    var bank = _banks.Where(b => b.Id == accountDocument.BankId).First();
+                    traversal.AddV(JanusService.AccountNode)
+                                   .Property("AccountId", accountDocument.AccountId)
+                                   .Property("AccountNumber", accountDocument.AccountNumber)
+                                   .Property("BankCode", bank.Code)
+                                   .Property("Country", bank.Country)
+                                   .Property("Balance", accountDocument?.AccountBalance).AddE("Owns").From("C" + document.CustomerId);
+                    var accountReponse = _Client.Update<AccountDocument,object>(accountDocumentId, t => t.Doc(
+                                      new
+                                      {
+                                          Indexed = true,
+                                          UpdatedAt = DateTime.Now,
+                                      }
+                            ));
+                    
+                }
+                var response = _Client.Update<CustomerDocument, object>(documentId, t => t.Doc(
+                 new 
+                 {
+                   
+                     Indexed = true,
+                     UpdatedAt = DateTime.Now
+                 }
+                 ));
             }
+            await _g.Tx().CommitAsync();
+            return true;
+        }
+        catch (Exception exception)
+        {
+            throw new ValidateErrorException(exception.Message);
         }
     }
     private async Task<bool> AddCustomerAndAccount()
@@ -392,6 +340,9 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                     sh => sh.Match(m => m.Field(f => f.Type).Query("Customer"))
                 ))
                 ));
+            if(CountQuery.Count <= 0){
+                return true;
+            }
             var totalBatches = CountQuery.Count / BatchSize;
             for (var i = 0; i <= totalBatches; i++)
             {
@@ -399,7 +350,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 var from = i * BatchSize;
                 var Response = _Client.Search<CustomerDocument>(c =>
                 c.From(from).Size(BatchSize).Query(q =>
-                      q.Bool(b => b.Should(
+                      q.Bool(b => b.Must(
                     sh => sh.Term(m => m.Field(f => f.Indexed).Value(false)),
                     sh => sh.Match(m => m.Field(f => f.Type).Query("Customer"))
                 ))
@@ -409,8 +360,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                     throw new ValidateErrorException("Invalid search");
                 }
                 var documents = Response.Documents;
-                AddCustomerBatch(documents);
-                await _g.Tx().CommitAsync();
+                await AddCustomerBatch(Response);
+
             }
             return true;
         }

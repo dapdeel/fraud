@@ -362,7 +362,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             var AccountResponse = _Client.Search<AccountDocument>(a =>
                         a.Query(q =>
                         q.Bool(b =>
-                        b.Should(sh =>
+                        b.Must(sh =>
                         sh.Match(sh => sh.Field(f => f.CustomerId).Query(document.CustomerId)),
                         sh => sh.Term(sh => sh.Field(f => f.Indexed).Value(false)),
                         sh => sh.Match(sh => sh.Field(f => f.Type).Query("Account"))
@@ -387,8 +387,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         {
             var CountQuery = _Client.Count<CustomerDocument>(c =>
             c.Query(q =>
-                q.Bool(b => b.Should(
-              //      sh => sh.Term(m => m.Field(f => f.Indexed).Value(false)),
+                q.Bool(b => b.Must(
+                    sh => sh.Term(m => m.Field(f => f.Indexed).Value(false)),
                     sh => sh.Match(m => m.Field(f => f.Type).Query("Customer"))
                 ))
                 ));

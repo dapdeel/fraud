@@ -248,7 +248,7 @@ public class TransferService : ITransferService
             // move this to cache
             var Bank = _context.Banks.Where(b => b.Code == accountRequest.BankCode).First();
             var AccountRequest = _Client.Search<AccountDocument>(c =>
-                c.Size(1).Query(q => q.Bool(q => q.Should(
+                c.Size(1).Query(q => q.Bool(q => q.Must(
                 sh => sh.Match(m => m.Field(f => f.AccountNumber).Query(accountRequest.AccountNumber)),
                 sh => sh.Term(m => m.Field(f => f.BankId).Value(Bank.Id))
                 ))));
@@ -312,7 +312,7 @@ public class TransferService : ITransferService
         {
             var ProfileRequest =
            _Client.Search<DeviceDocument>(c =>
-           c.Size(1).Query(q => q.Bool(q => q.Should(
+           c.Size(1).Query(q => q.Bool(q => q.Must(
            sh => sh.Match(m => m.Field(f => f.DeviceId).Query(request.DeviceId)),
            sh => sh.Match(m => m.Field(f => f.CustomerId).Query(customer.CustomerId))
            ))));

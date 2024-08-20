@@ -6,7 +6,7 @@ public class TransactionTransferRequest
     [Required]
      [Range(1, int.MaxValue, ErrorMessage = "Please specify an observatory")]
     public required int ObservatoryId { get; set; }
-
+    
     [Required]
     public required CustomerRequest DebitCustomer { get; set; }
     [Required]

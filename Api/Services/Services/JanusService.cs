@@ -15,7 +15,7 @@ public class JanusService : IGraphService
     public static readonly string CustomerNode = "Customer";
     public static readonly string AccountNode = "Account";
     public static readonly string TransactionNode = "Transaction";
-
+    private Observatory? _observatory;
     public static readonly string DeviceNode = "Device";
 
     private GraphConfig _graphConfig;
@@ -24,6 +24,7 @@ public class JanusService : IGraphService
     {
         _graphConfig = configuration.Value;
         _context = context;
+        
     }
     public JanusGraphConnector connect()
     {
@@ -56,14 +57,33 @@ public class JanusService : IGraphService
     }
     public JanusGraphConnector connect(int ObservatoryId)
     {
-        var observatory = _context.Observatories.Find(ObservatoryId);
-        if (observatory == null)
+        _observatory = _context.Observatories.Find(ObservatoryId);
+        if (_observatory == null)
         {
             throw new ValidateErrorException("No Observatory Found, Please contact your support officer");
         }
 
-        var Connector = new JanusGraphConnector(GetHost(observatory));
+        var Connector = new JanusGraphConnector(GetHost(_observatory));
+
         return Connector;
+    }
+
+    public async Task<bool> RunIndexQuery()
+    {
+        if (_observatory == null)
+        {
+            return false;
+        }
+        if (!_observatory.HasConnected)
+        {
+            var Connector = new JanusGraphConnector(GetHost(_observatory));
+            await Connector.RunIndexQuery();
+            _observatory.HasConnected = true;
+            _context.Update(_observatory);
+            _context.SaveChanges();
+
+        }
+        return true;
     }
 
 }

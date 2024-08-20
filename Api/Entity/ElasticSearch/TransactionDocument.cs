@@ -18,6 +18,7 @@ public class TransactionDocument
     public required string TransactionId { get; set; }
     public required string DebitAccountId { get; set; }
     public required string CreditAccountId { get; set; }
+    public string? DeviceDocumentId {get;set;}
     public int ObservatoryId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

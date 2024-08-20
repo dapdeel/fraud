@@ -28,6 +28,8 @@ public class Observatory
     public string? GraphPassword { get; set; }
     public string? ElasticSearchHost { get; set; }
     public ObservatoryType? ObservatoryType { get; set; }
+
+    public bool HasConnected { get; set; }
     public int BankId { get; set; }
     public Bank? Bank { get; set; }
     public DateTime CreatedAt { get; set; }

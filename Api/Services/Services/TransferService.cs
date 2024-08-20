@@ -28,7 +28,7 @@ public class TransferService : ITransferService
 
     public TransferService(IGraphService graphService, ApplicationDbContext context,
     ITransactionIngestGraphService TransactionGraphService,
-    IQueuePublisherService queuePublisherService, IConfiguration configuration, 
+    IQueuePublisherService queuePublisherService, IConfiguration configuration,
     IElasticSearchService ElasticSearchService)
     {
         _graphService = graphService;
@@ -61,7 +61,7 @@ public class TransferService : ITransferService
         return _Client;
 
     }
-    public async Task<TransactionDocument> Ingest(TransactionTransferRequest request)
+    public async Task<TransactionDocument> Ingest(TransactionTransferRequest request, bool IndexToGraph = true)
     {
         ElasticClient(request.ObservatoryId);
         List<string> errors = ValidateTransactionTransfer(request);
@@ -92,20 +92,18 @@ public class TransferService : ITransferService
             {
                 var TransactionProfile = await AddDevice(request.DebitCustomer.Device, DebitCustomer, transaction);
                 TransactionData.Device = TransactionProfile;
+                _Client.Update<TransactionDocument, object>(transaction.PlatformId, t => t.Doc(
+                   new
+                   {
+                       DeviceDocumentId = TransactionProfile.DeviceId
+                   }
+                   ));
+            }
+            if (IndexToGraph)
+            {
+                var successfullyIndexed = await _graphIngestService.IngestTransactionInGraph(TransactionData);
             }
 
-            //  //   var successfullyIndexed = await _TransactionGraphService.IngestTransactionInGraph(TransactionData);
-            //     _Client.Update<TransactionDocument>(transaction.PlatformId, t => t.Doc(
-            //         new TransactionDocument
-            //         {
-            //             Indexed = successfullyIndexed,
-            //             TransactionId = transaction.TransactionId,
-            //             DebitAccountId = transaction.DebitAccountId,
-            //             CreditAccountId = transaction.CreditAccountId,
-            //             PlatformId = transaction.PlatformId,
-            //             Amount = transaction.Amount
-            //         }
-            //         ));
             return transaction;
 
         }
@@ -218,7 +216,7 @@ public class TransferService : ITransferService
         {
             var CustomerRequest =
             _Client.Search<CustomerDocument>(c =>
-            c.Size(1).Query(q => q.Bool(q => q.Should(
+            c.Size(1).Query(q => q.Bool(q => q.Must(
             sh => sh.Match(m => m.Field(f => f.Email).Query(customerRequest.Email)),
             sh => sh.Match(m => m.Field(f => f.Phone).Query(customerRequest.Phone))
             ))));
@@ -328,7 +326,7 @@ public class TransferService : ITransferService
                     DeviceId = request.DeviceId,
                     DeviceType = request.DeviceType,
                     IpAddress = request.IpAddress,
-                    Type = "Account"
+                    Type = "Device"
                 };
                 _Client.IndexDocument(profile);
                 return profile;
@@ -386,7 +384,7 @@ public class TransferService : ITransferService
                 foreach (var record in records)
                 {
                     var request = MakeRequest(record);
-                    await Ingest(request);
+                    await Ingest(request, false);
                 }
                 await _graphIngestService.RunAnalysis(data.ObservatoryId);
             }

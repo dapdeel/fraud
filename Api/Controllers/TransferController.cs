@@ -63,7 +63,7 @@ public class TransferController : ControllerBase
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var observatory = await _observatoryService.Get(request.ObservatoryId, userId);
-            var response = await _service.Ingest(request);
+            var response = await _service.Ingest(request, true);
 
             return Ok(new ApiResponse<object>
             {
@@ -88,7 +88,7 @@ public class TransferController : ControllerBase
     {
         try
         {
-            var response = await _service.UploadAndIngest(ObservatoryId,file);
+            var response = await _service.UploadAndIngest(ObservatoryId, file);
 
             return Ok(new ApiResponse<object>
             {

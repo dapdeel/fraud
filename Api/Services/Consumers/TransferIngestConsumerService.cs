@@ -44,7 +44,7 @@ public class TransferIngestConsumerService : BackgroundService
                 using (var scope = _scopeFactory.CreateScope())
                 {
                 var transferService = scope.ServiceProvider.GetRequiredService<ITransferService>();
-                   await transferService.Ingest(response); // Use scoped service
+                   await transferService.Ingest(response, true); // Use scoped service
                 }
             }
 

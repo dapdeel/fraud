@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Api.Models.Responses;
+using Api.Models;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -214,4 +215,45 @@ public class ObservatoryController : ControllerBase
         }
     }
 
+
+    [HttpGet("{userId}/invitations")]
+    public async Task<ActionResult<List<Observatory>>> GetInvitedObservatories(string userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "User not authenticated"
+                });
+            }
+
+            var observatories = await _service.GetInvitedObservatoriesByUserId(userId);
+            return Ok(new ApiResponse<dynamic>
+            {
+                Status = "success",
+                Data = observatories
+            });
+        }
+        catch (ValidateErrorException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ApiResponse<dynamic>
+            {
+                Status = "error",
+                Message = "An unexpected error occurred.",
+                Error = new ApiError { Code = "", Details = ex.Message }
+            });
+        }
+    }
 }

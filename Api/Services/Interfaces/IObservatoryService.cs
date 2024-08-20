@@ -15,5 +15,7 @@ namespace Api.Services.Interfaces
         Task Invite(InvitationRequest request, string inviterUserId);
         Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId);
         Task<List<Observatory>> GetObservatoriesByUserId( string userId);
+        Task<List<Observatory>> GetInvitedObservatoriesByUserId(string userId);
+
     }
 }

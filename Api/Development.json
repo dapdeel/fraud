@@ -7,7 +7,8 @@
   },
   "AllowedHosts": "*",
   "ConnectionStrings": {
-    "DefaultConnection": "Host=dev.cva24qo6csc1.us-east-1.rds.amazonaws.com;Database=Fraud;Username=postgres;Password=HC8Im4H2V6GB8fdslwZH"
+    // "DefaultConnection": "Host=dev.cva24qo6csc1.us-east-1.rds.amazonaws.com;Database=Fraud;Username=postgres;Password=HC8Im4H2V6GB8fdslwZH"
+    "DefaultConnection": "Host=localhost;Database=FraudMain;Username=postgres;Password=Gbolahan123!"
   },
   "Jwt": {
     "Key": "Long-Key-I-need-to-write-a-standard-method-to-generate-a-key-later",

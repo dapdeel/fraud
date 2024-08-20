@@ -68,11 +68,11 @@ public class ObservatoryController : ControllerBase
     }
 
     [HttpPost("Invite")]
-    public async Task<IActionResult> Invite([FromBody] InvitationRequest request, string invitedUserId)
+    public async Task<IActionResult> Invite([FromBody] InvitationRequest request, string adminUserId)
     {
         try
         {
-            await _service.Invite(request, invitedUserId);
+            await _service.Invite(request, adminUserId);
             return Ok(new ApiResponse<object>
             {
                 Status = "success",

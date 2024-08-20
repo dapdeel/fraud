@@ -221,12 +221,15 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
 
         try
         {
-            _g.AddV(JanusService.DeviceNode)
-                .Property("ProfileId", TransactionProfile.ProfileId)
-                    .Property("DeviceId", TransactionProfile.DeviceId)
-        .Property("DeviceType", TransactionProfile.DeviceType)
-        .Property("IpAddress", TransactionProfile.IpAddress)
-        .Property("Timestamp", DateTime.UtcNow);
+            if (!TransactionProfile.Indexed)
+            {
+                _g.AddV(JanusService.DeviceNode)
+                    .Property("ProfileId", TransactionProfile.ProfileId)
+                        .Property("DeviceId", TransactionProfile.DeviceId)
+            .Property("DeviceType", TransactionProfile.DeviceType)
+            .Property("IpAddress", TransactionProfile.IpAddress)
+            .Property("Timestamp", DateTime.UtcNow);
+            }
 
             var DeviceEdgeExist = _g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", Customer.CustomerId)
                 .OutE("USED_DEVICE")
@@ -358,6 +361,11 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             if (debitCustomerIndexResponse && creditCustomerIndexResponse &&
             accountEdgeIndexed && transactionIndexed && deviceIndexed)
             {
+                MarkAccountAsIndexed(DebitAccountDocument);
+                MarkAccountAsIndexed(CreditAccountDocument);
+                MarkCustomerAsIndexed(DebitCustomerDocument);
+                MarkCustomerAsIndexed(CreditCustomerDocument);
+                MarkDeviceIndexed(DeviceDocument);
                 _Client.Update<TransactionDocument, object>(id, t => t.Doc(
                        new
                        {
@@ -368,9 +376,64 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         return true;
     }
+    private bool MarkAccountAsIndexed(AccountDocument accountDocument)
+    {
+        var query = _Client.Search<AccountDocument>(s =>
+                       s.Size(1).Query(q => q.Bool(b =>
+                        b.Must(
+                          m => m.Match(ma => ma.Field(f => f.AccountId).Query(accountDocument.AccountId)),
+                             m => m.Match(ma => ma.Field(f => f.Type).Query("Account")))
+                           )));
+        var updateDocument = query.Hits.First();
+        var response = _Client.Update<AccountDocument, object>(updateDocument.Id, t => t.Doc(
+                 new
+                 {
+                     Indexed = true
+                 }
+          ));
+        return true;
+    }
+    private bool MarkCustomerAsIndexed(CustomerDocument customerDocument)
+    {
+        var query = _Client.Search<CustomerDocument>(s =>
+                       s.Size(1).Query(q => q.Bool(b =>
+                        b.Must(
+                          m => m.Match(ma => ma.Field(f => f.CustomerId).Query(customerDocument.CustomerId)),
+                             m => m.Match(ma => ma.Field(f => f.Type).Query("Customer")))
+                           )));
+        var updateDocument = query.Hits.First();
+        var response = _Client.Update<CustomerDocument, object>(updateDocument.Id, t => t.Doc(
+                 new
+                 {
+                     Indexed = true
+                 }
+          ));
+        return true;
+    }
+    private bool MarkDeviceIndexed(DeviceDocument deviceDocument)
+    {
+        var query = _Client.Search<DeviceDocument>(s =>
+                         s.Size(1).Query(q => q.Bool(b =>
+                          b.Must(
+                            m => m.Match(ma => ma.Field(f => f.DeviceId).Query(deviceDocument.DeviceId)),
+                               m => m.Match(ma => ma.Field(f => f.Type).Query("Device")))
+                             )));
+        var updateDocument = query.Hits.First();
+        var response = _Client.Update<DeviceDocument, object>(updateDocument.Id, t => t.Doc(
+                 new
+                 {
+                     Indexed = true
+                 }
+          ));
+        return true;
+    }
     private bool IndexSingleCustomerAndAccount(CustomerDocument customerDocument, AccountDocument accountDocument)
     {
         var traversal = _g.V();
+        if (accountDocument.Indexed)
+        {
+            return true;
+        }
         if (!customerDocument.Indexed)
         {
             traversal.AddV(JanusService.CustomerNode)
@@ -402,6 +465,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
 
         try
         {
+            connect(ObservatoryId);
+            _banks = _context.Banks.ToList();
             var response = await AddTransactions();
             return true;
         }

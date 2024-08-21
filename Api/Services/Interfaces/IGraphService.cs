@@ -6,5 +6,4 @@ public interface IGraphService
 {
    public abstract JanusGraphConnector connect();
    public abstract JanusGraphConnector connect(int ObservatoryId);
-   public Task<bool> RunIndexQuery();
 }

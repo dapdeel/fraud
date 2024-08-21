@@ -36,7 +36,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
             _connector = _graphService.connect(ObservatoryId);
-            //await _graphService.RunIndexQuery();
+           // _graphService.RunIndexQuery();
             _Client = ElasticClient(ObservatoryId);
             _g = _connector.traversal();
             return true;
@@ -102,7 +102,9 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            return false;
+            await _g.Tx().RollbackAsync();
+            throw new ValidateErrorException("Unable to Add Transaction");
+            // return false;
         }
         finally
         {
@@ -212,7 +214,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception exception)
         {
-            await _g.Tx().RollbackAsync();
             return false;
         }
     }
@@ -291,6 +292,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception exception)
         {
+            await _g.Tx().RollbackAsync();
             throw new ValidateErrorException("Error Adding to Graph!!! " + exception.Message);
         }
     }
@@ -436,15 +438,15 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         if (!customerDocument.Indexed)
         {
-            traversal.AddV(JanusService.CustomerNode)
-                                  .Property("CustomerId", customerDocument.CustomerId)
-                                  .Property("Name", customerDocument.FullName)
-                                  .Property("Phone", customerDocument.Phone)
-                                  .Property("Email", customerDocument.Email).As("C" + customerDocument.CustomerId);
+            traversal = _g.AddV(JanusService.CustomerNode)
+                                   .Property("CustomerId", customerDocument.CustomerId)
+                                   .Property("Name", customerDocument.FullName)
+                                   .Property("Phone", customerDocument.Phone)
+                                   .Property("Email", customerDocument.Email).As("C1" + customerDocument.CustomerId);
         }
         else
         {
-            traversal.HasLabel(JanusService.AccountNode).Has("CustomerId", customerDocument.CustomerId).As("C" + customerDocument.CustomerId);
+            traversal = traversal.HasLabel(JanusService.CustomerNode).Has("CustomerId", customerDocument.CustomerId).As("C1" + customerDocument.CustomerId);
         }
         if (!accountDocument.Indexed)
         {
@@ -455,7 +457,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                                  .Property("BankCode", bank.Code)
                                  .Property("Country", bank.Country)
                                  .Property("Balance", accountDocument?.AccountBalance).AddE("Owns")
-                                 .From("C" + customerDocument.CustomerId);
+                                 .From("C1" + customerDocument.CustomerId).Iterate();
         }
         return true;
 

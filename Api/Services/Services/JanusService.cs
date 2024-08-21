@@ -68,22 +68,5 @@ public class JanusService : IGraphService
         return Connector;
     }
 
-    public async Task<bool> RunIndexQuery()
-    {
-        if (_observatory == null)
-        {
-            return false;
-        }
-        if (!_observatory.HasConnected)
-        {
-            var Connector = new JanusGraphConnector(GetHost(_observatory));
-            await Connector.RunIndexQuery();
-            _observatory.HasConnected = true;
-            _context.Update(_observatory);
-            _context.SaveChanges();
-
-        }
-        return true;
-    }
 
 }

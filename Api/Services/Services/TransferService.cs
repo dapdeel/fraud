@@ -130,10 +130,12 @@ public class TransferService : ITransferService
         {
             var CustomerRequest =
             _Client.Search<TransactionDocument>(c =>
-            c.Query(q => q.Bool(q => q.Must(
-            sh => sh.Match(m => m.Field("TransactionId.keyword").Query(TransactionId)),
-            sh => sh.Term(m => m.Field(f => f.ObservatoryId).Value(observatoryId))
-            ))));
+            c.Query(q => q.Bool(
+                b => b.Filter(f =>
+                f.Bool(b => b.Should(sh => sh.MatchPhrase(mp => mp.Field(f => f.TransactionId).Query(TransactionId)))),
+                f => f.Bool(b => b.Should(sh => sh.MatchPhrase(mp => mp.Field(f => f.ObservatoryId).Query(observatoryId.ToString()))))
+                )
+            )));
 
             if (CustomerRequest.Documents.Count > 0)
             {
@@ -358,7 +360,7 @@ public class TransferService : ITransferService
                 Type = "Transaction"
             };
 
-           var response = _Client.IndexDocument(transaction);
+            var response = _Client.IndexDocument(transaction);
             return transaction;
         }
         catch (Exception Exception)
@@ -371,11 +373,13 @@ public class TransferService : ITransferService
     {
         try
         {
-            var ProfileRequest =_Client.Search<DeviceDocument>(c =>
-           c.Size(1).Query(q => q.Bool(q => q.Must(
-           sh => sh.Match(m => m.Field(f => f.DeviceId).Query(request.DeviceId)),
-           sh => sh.Match(m => m.Field(f => f.CustomerId).Query(customer.CustomerId))
-           ))));
+            var ProfileRequest = _Client.Search<DeviceDocument>(c =>
+            c.Query(q => q.Bool(
+                b => b.Filter(f =>
+                f.Bool(b => b.Should(sh => sh.MatchPhrase(mp => mp.Field(f => f.DeviceId).Query(request.DeviceId)))),
+                f => f.Bool(b => b.Should(sh => sh.MatchPhrase(mp => mp.Field(f => f.CustomerId).Query(customer.CustomerId))))
+                )
+            )));
             if (ProfileRequest.Documents.Count <= 1)
             {
                 var profile = new DeviceDocument

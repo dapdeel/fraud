@@ -90,7 +90,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 MarkCustomerAsIndexed(data.CreditCustomer);
                 if(data.Device != null)
                     MarkDeviceIndexed(data.Device);
-                    
+
                 var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                  s.Size(1).Query(q => q.Bool(b =>
                   b.Must(
@@ -210,12 +210,12 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
              .Property("Description", Transaction.Description)
              .Property("ObservatoryId", Transaction.ObservatoryId).Iterate();
 
-            _g.V().HasLabel(JanusService.AccountNode, "AccountId", DebitAccount.AccountId).As("A1")
-           .V().Has(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId).AddE("SENT")
+            _g.V().HasLabel(JanusService.AccountNode).Has("AccountId", DebitAccount.AccountId).As("A1")
+           .V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId).AddE("SENT")
            .From("A1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
 
             _g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId)
-            .As("T1").V().Has(JanusService.AccountNode, "AccountId", CreditAccount.AccountId)
+            .As("T1").V().HasLabel(JanusService.AccountNode, "AccountId", CreditAccount.AccountId)
             .AddE("RECEIVED").From("T1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
             return true;
         }

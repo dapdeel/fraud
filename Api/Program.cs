@@ -116,7 +116,7 @@ else
 app.UseCors("ClientPermission");
 app.UseHttpsRedirection();
 app.UseAuthentication();
-app.UseAuthorization();
+
 app.UseHangfireDashboard();
 var dashboardOptions =
             new DashboardOptions
@@ -129,7 +129,7 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 
 app.UseCors("AllowAllOrigins");
-
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();

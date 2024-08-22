@@ -216,7 +216,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
            .From("A1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
 
             _g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId)
-            .As("T1").V().HasLabel(JanusService.AccountNode, "AccountId", CreditAccount.AccountId)
+            .As("T1").V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccount.AccountId)
             .AddE("RECEIVED").From("T1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
             return true;
         }

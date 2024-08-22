@@ -13,6 +13,7 @@ using Api.Services.TransactionTracing;
 using Microsoft.AspNetCore.Http.Features;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Hangfire.Dashboard;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -117,6 +118,11 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseHangfireDashboard();
+ app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+       Authorization = new IDashboardAuthorizationFilter[] { } // Allow everyone to access
+    });
+
 app.UseCors("AllowAllOrigins");
 
 app.MapControllers();

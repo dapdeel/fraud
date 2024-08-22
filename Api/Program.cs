@@ -118,10 +118,15 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseHangfireDashboard();
- app.UseHangfireDashboard("/hangfire", new DashboardOptions
-    {
-       Authorization = new IDashboardAuthorizationFilter[] { } // Allow everyone to access
-    });
+var dashboardOptions =
+            new DashboardOptions
+            {
+                IgnoreAntiforgeryToken = true
+            };
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new UseHangfireDashboardFilter() } // Allow everyone to access
+});
 
 app.UseCors("AllowAllOrigins");
 

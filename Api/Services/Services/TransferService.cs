@@ -130,8 +130,8 @@ public class TransferService : ITransferService
         {
             var CustomerRequest =
             _Client.Search<TransactionDocument>(c =>
-            c.Size(1).Query(q => q.Bool(q => q.Must(
-            sh => sh.Match(m => m.Field(f => f.TransactionId).Query(TransactionId)),
+            c.Query(q => q.Bool(q => q.Must(
+            sh => sh.Match(m => m.Field("TransactionId.keyword").Query(TransactionId)),
             sh => sh.Term(m => m.Field(f => f.ObservatoryId).Value(observatoryId))
             ))));
 

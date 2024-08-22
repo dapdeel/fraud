@@ -71,6 +71,12 @@ public class TransferService : ITransferService
         }
         try
         {
+            var d = GetTransaction(request.Transaction.TransactionId, request.ObservatoryId);
+            if (d != null)
+            {
+                return d;
+            }
+
             var DebitCustomer = AddCustomer(request.DebitCustomer);
             var DebitAccount = AddAccount(request.DebitCustomer.Account, DebitCustomer);
 
@@ -106,6 +112,27 @@ public class TransferService : ITransferService
 
             return transaction;
 
+        }
+        catch (Exception Exception)
+        {
+            throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
+        }
+    }
+    private TransactionDocument? GetTransaction(string TransactionId, int observatoryId)
+    {
+        try
+        {
+            var CustomerRequest =
+            _Client.Search<TransactionDocument>(c =>
+            c.Size(1).Query(q => q.Bool(q => q.Must(
+            sh => sh.Match(m => m.Field(f => f.TransactionId).Query(TransactionId))
+            ))));
+
+            if (CustomerRequest.Documents.Count > 0)
+            {
+                return CustomerRequest.Documents.First();
+            }
+            return null;
         }
         catch (Exception Exception)
         {
@@ -384,9 +411,9 @@ public class TransferService : ITransferService
                 foreach (var record in records)
                 {
                     var request = MakeRequest(record);
-                    await Ingest(request, false);
+                    await Ingest(request, true);
                 }
-                await _graphIngestService.RunAnalysis(data.ObservatoryId);
+                //   await _graphIngestService.RunAnalysis(data.ObservatoryId);
             }
         }
         return true;

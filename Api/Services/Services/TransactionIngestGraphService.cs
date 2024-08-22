@@ -199,6 +199,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     {
         try
         {
+            
             _g.AddV(JanusService.TransactionNode)
              .Property("PlatformId", Transaction.PlatformId)
              .Property("TransactionId", Transaction.TransactionId)
@@ -424,7 +425,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         var query = _Client.Search<DeviceDocument>(s =>
                          s.Size(1).Query(q => q.Bool(b =>
                           b.Must(
-                            m => m.Match(ma => ma.Field(f => f.DeviceId).Query(deviceDocument.DeviceId)),
+                            m => m.Match(ma => ma.Field(f => f.ProfileId).Query(deviceDocument.ProfileId)),
                                m => m.Match(ma => ma.Field(f => f.Type).Query("Device")))
                              )));
         var updateDocument = query.Hits.First();
@@ -481,6 +482,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception exception)
         {
+            throw new ValidateErrorException(exception.Message);
             return false;
         }
     }

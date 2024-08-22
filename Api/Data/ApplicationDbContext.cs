@@ -17,6 +17,7 @@
         public DbSet<UserObservatory> UserObservatories { get; set; }
         public DbSet<TransactionCustomer> TransactionCustomers { get; set; }
         public DbSet<TransactionAccount> TransactionAccounts { get; set; }
+        public DbSet<TransactionFileDocument> TransactionFileDocument {get;set;} 
         public DbSet<TransactionProfile> TransactionProfiles { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
 

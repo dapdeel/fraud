@@ -36,7 +36,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
             _connector = _graphService.connect(ObservatoryId);
-           // _graphService.RunIndexQuery();
+            // _graphService.RunIndexQuery();
             _Client = ElasticClient(ObservatoryId);
             _g = _connector.traversal();
             return true;
@@ -84,11 +84,11 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             await _g.Tx().CommitAsync();
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
-                 MarkAccountAsIndexed(data.DebitAccount);
+                MarkAccountAsIndexed(data.DebitAccount);
                 MarkAccountAsIndexed(data.CreditAccount);
                 MarkCustomerAsIndexed(data.DebitCustomer);
                 MarkCustomerAsIndexed(data.CreditCustomer);
-                if(data.Device != null)
+                if (data.Device != null)
                     MarkDeviceIndexed(data.Device);
 
                 var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
@@ -199,7 +199,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     {
         try
         {
-            
+
             _g.AddV(JanusService.TransactionNode)
              .Property("PlatformId", Transaction.PlatformId)
              .Property("TransactionId", Transaction.TransactionId)
@@ -247,7 +247,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
 
             if (!DeviceEdgeExist)
             {
-                _g.V().HasLabel(JanusService.CustomerNode).Has( "CustomerId", Customer.CustomerId).As("c")
+                _g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", Customer.CustomerId).As("c")
                     .V().Has(JanusService.DeviceNode, "ProfileId", TransactionProfile.ProfileId).AddE("USED_DEVICE")
                     .From("c").Property("CreatedAt", DateTime.UtcNow).Iterate();
             }
@@ -366,16 +366,21 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                                      sh => sh.Match(sh => sh.Field(f => f.Type).Query("Device"))
                                  ))
                              ));
-            var DeviceDocument = deviceResponse.Documents.First();
-            var deviceIndexed = AddDevice(DeviceDocument, document, DebitCustomerDocument);
+            if (deviceResponse.Documents.Count > 0)
+            {
+                var DeviceDocument = deviceResponse.Documents.First();
+                var deviceIndexed = AddDevice(DeviceDocument, document, DebitCustomerDocument);
+                MarkDeviceIndexed(DeviceDocument);
+            }
+
             if (debitCustomerIndexResponse && creditCustomerIndexResponse &&
-            accountEdgeIndexed && transactionIndexed && deviceIndexed)
+            accountEdgeIndexed && transactionIndexed)
             {
                 MarkAccountAsIndexed(DebitAccountDocument);
                 MarkAccountAsIndexed(CreditAccountDocument);
                 MarkCustomerAsIndexed(DebitCustomerDocument);
                 MarkCustomerAsIndexed(CreditCustomerDocument);
-                MarkDeviceIndexed(DeviceDocument);
+
                 _Client.Update<TransactionDocument, object>(id, t => t.Doc(
                        new
                        {
@@ -428,6 +433,10 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                             m => m.Match(ma => ma.Field(f => f.ProfileId).Query(deviceDocument.ProfileId)),
                                m => m.Match(ma => ma.Field(f => f.Type).Query("Device")))
                              )));
+        if (query.Hits.Count <= 0)
+        {
+            return false;
+        }
         var updateDocument = query.Hits.First();
         var response = _Client.Update<DeviceDocument, object>(updateDocument.Id, t => t.Doc(
                  new

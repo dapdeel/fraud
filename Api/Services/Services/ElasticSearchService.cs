@@ -21,6 +21,7 @@ public class ElasticSearchService : IElasticSearchService
     public ElasticClient connect(string Host)
     {
         var settings = new ConnectionSettings(new Uri(Host))
+            .DisableDirectStreaming(false)
              .DefaultIndex("transactions");
         var client = new ElasticClient(settings);
         return client;

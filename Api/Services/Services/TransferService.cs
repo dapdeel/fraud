@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using CsvHelper.Configuration;
 using Nest;
 using System.Text;
+using Hangfire;
 
 public class TransferService : ITransferService
 {
@@ -96,9 +97,10 @@ public class TransferService : ITransferService
             };
             if (request.DebitCustomer.Device != null && request.DebitCustomer.Device?.DeviceId != null)
             {
-                var TransactionProfile = await AddDevice(request.DebitCustomer.Device, DebitCustomer, transaction);
+                var TransactionProfile = AddDevice(request.DebitCustomer.Device, DebitCustomer, transaction);
                 TransactionData.Device = TransactionProfile;
-                _Client.Update<TransactionDocument, object>(transaction.PlatformId, t => t.Doc(
+                var transactionDetail = GetTransaction(transaction.PlatformId);
+                _Client.Update<TransactionDocument, object>(transactionDetail.Id, t => t.Doc(
                    new
                    {
                        DeviceDocumentId = TransactionProfile.DeviceId
@@ -108,6 +110,10 @@ public class TransferService : ITransferService
             if (IndexToGraph)
             {
                 var successfullyIndexed = await _graphIngestService.IngestTransactionInGraph(TransactionData);
+            }
+            else
+            {
+                BackgroundJob.Enqueue(() => _graphIngestService.IngestTransactionInGraph(TransactionData));
             }
 
             return transaction;
@@ -125,7 +131,8 @@ public class TransferService : ITransferService
             var CustomerRequest =
             _Client.Search<TransactionDocument>(c =>
             c.Size(1).Query(q => q.Bool(q => q.Must(
-            sh => sh.Match(m => m.Field(f => f.TransactionId).Query(TransactionId))
+            sh => sh.Match(m => m.Field(f => f.TransactionId).Query(TransactionId)),
+            sh => sh.Term(m => m.Field(f => f.ObservatoryId).Value(observatoryId))
             ))));
 
             if (CustomerRequest.Documents.Count > 0)
@@ -133,6 +140,24 @@ public class TransferService : ITransferService
                 return CustomerRequest.Documents.First();
             }
             return null;
+        }
+        catch (Exception Exception)
+        {
+            throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
+        }
+    }
+    private Nest.IHit<TransactionDocument> GetTransaction(string PlatformId)
+    {
+        try
+        {
+            var CustomerRequest =
+            _Client.Search<TransactionDocument>(c =>
+            c.Size(1).Query(q => q.Bool(q => q.Must(
+            sh => sh.Match(m => m.Field(f => f.TransactionId).Query(PlatformId))
+            ))));
+
+            return CustomerRequest.Hits.First();
+
         }
         catch (Exception Exception)
         {
@@ -168,6 +193,14 @@ public class TransferService : ITransferService
                 Name = blobName,
                 ObservatoryId = ObservatoryId
             };
+            var TransactionFileDocument = new TransactionFileDocument
+            {
+                Name = blobName,
+                Url = url,
+                ObservatoryId = ObservatoryId,
+                Indexed = false
+            };
+            _context.Add(TransactionFileDocument);
             var requestString = JsonConvert.SerializeObject(fileRequestUrl);
             var IngestFileQueueName = _configuration.GetValue<string>("IngestFileQueueName");
             if (IngestFileQueueName == null)
@@ -175,7 +208,7 @@ public class TransferService : ITransferService
                 throw new ValidateErrorException("Invalid Queue Name");
             }
             _queuePublisherService.Publish(IngestFileQueueName, requestString);
-
+            _context.SaveChanges();
             return true;
         }
         catch (Exception ex)
@@ -325,7 +358,7 @@ public class TransferService : ITransferService
                 Type = "Transaction"
             };
 
-            _Client.IndexDocument(transaction);
+           var response = _Client.IndexDocument(transaction);
             return transaction;
         }
         catch (Exception Exception)
@@ -334,12 +367,11 @@ public class TransferService : ITransferService
         }
 
     }
-    private async Task<DeviceDocument> AddDevice(DeviceRequest request, CustomerDocument customer, TransactionDocument transaction)
+    private DeviceDocument AddDevice(DeviceRequest request, CustomerDocument customer, TransactionDocument transaction)
     {
         try
         {
-            var ProfileRequest =
-           _Client.Search<DeviceDocument>(c =>
+            var ProfileRequest =_Client.Search<DeviceDocument>(c =>
            c.Size(1).Query(q => q.Bool(q => q.Must(
            sh => sh.Match(m => m.Field(f => f.DeviceId).Query(request.DeviceId)),
            sh => sh.Match(m => m.Field(f => f.CustomerId).Query(customer.CustomerId))
@@ -354,6 +386,7 @@ public class TransferService : ITransferService
                     DeviceType = request.DeviceType,
                     IpAddress = request.IpAddress,
                     CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
                     Type = "Device"
                 };
                 var response = _Client.IndexDocument(profile);
@@ -412,12 +445,17 @@ public class TransferService : ITransferService
                 foreach (var record in records)
                 {
                     var request = MakeRequest(record);
-                    var requestString = JsonConvert.SerializeObject(request);
-                    var queueName = _configuration.GetValue<string>("IngestQueueName");
-                    _queuePublisherService.Publish(queueName, requestString);
-                    // await Ingest(request, true);
+                    await Ingest(request, false);
                 }
-                //   await _graphIngestService.RunAnalysis(data.ObservatoryId);
+                var document = _context.TransactionFileDocument.Where(d => d.Name == data.Name).FirstOrDefault();
+                if (document == null)
+                {
+                    throw new ValidateErrorException("Invalid Document");
+                }
+                document.Indexed = true;
+                _context.Update(document);
+                _context.SaveChanges();
+                await _graphIngestService.RunAnalysis(data.ObservatoryId);
             }
         }
         return true;

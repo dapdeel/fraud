@@ -11,6 +11,9 @@ using Microsoft.OpenApi.Models;
 using Api.Services.Interfaces;
 using Api.Services.TransactionTracing;
 using Microsoft.AspNetCore.Http.Features;
+using Hangfire;
+using Hangfire.PostgreSql;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,6 +116,7 @@ app.UseCors("ClientPermission");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseHangfireDashboard();
 app.UseCors("AllowAllOrigins");
 
 app.MapControllers();
@@ -133,5 +137,12 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
     builder.Services.AddTransient<ITransactionIngestGraphService, TransactionIngestGraphService>();
     builder.Services.AddScoped<ITransactionTracingGraphService, TransactionTracingGraphService>();
-    builder.Services.AddScoped<IElasticSearchService,ElasticSearchService>();
+    builder.Services.AddScoped<IElasticSearchService, ElasticSearchService>();
+    builder.Services.AddHangfire(config =>
+            {
+                config.UsePostgreSqlStorage(builder.Configuration.GetConnectionString("DefaultConnection"));
+            });
+    builder.Services.AddHangfireServer();
+    // RecurringJob.AddOrUpdate("recurring-job-id", () => , Cron.Daily);
+
 }

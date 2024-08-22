@@ -34,7 +34,6 @@ public class AccountDocument
 
 public class DeviceDocument
 {
-    public long Id { get; set; }
     public string? DeviceId { get; set; }
     public required string ProfileId { get; set; }
     public DeviceType? DeviceType { get; set; }

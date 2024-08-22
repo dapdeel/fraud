@@ -84,6 +84,13 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             await _g.Tx().CommitAsync();
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
+                 MarkAccountAsIndexed(data.DebitAccount);
+                MarkAccountAsIndexed(data.CreditAccount);
+                MarkCustomerAsIndexed(data.DebitCustomer);
+                MarkCustomerAsIndexed(data.CreditCustomer);
+                if(data.Device != null)
+                    MarkDeviceIndexed(data.Device);
+                    
                 var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                  s.Size(1).Query(q => q.Bool(b =>
                   b.Must(
@@ -203,11 +210,11 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
              .Property("Description", Transaction.Description)
              .Property("ObservatoryId", Transaction.ObservatoryId).Iterate();
 
-            _g.V().Has(JanusService.AccountNode, "AccountId", DebitAccount.AccountId).As("A1")
-           .V().Has(JanusService.TransactionNode, "PlatformId", Transaction.PlatformId).AddE("SENT")
+            _g.V().HasLabel(JanusService.AccountNode, "AccountId", DebitAccount.AccountId).As("A1")
+           .V().Has(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId).AddE("SENT")
            .From("A1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
 
-            _g.V().Has(JanusService.TransactionNode, "PlatformId", Transaction.PlatformId)
+            _g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId)
             .As("T1").V().Has(JanusService.AccountNode, "AccountId", CreditAccount.AccountId)
             .AddE("RECEIVED").From("T1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
             return true;
@@ -239,12 +246,12 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
 
             if (!DeviceEdgeExist)
             {
-                _g.V().Has(JanusService.CustomerNode, "CustomerId", Customer.CustomerId).As("c")
+                _g.V().HasLabel(JanusService.CustomerNode).Has( "CustomerId", Customer.CustomerId).As("c")
                     .V().Has(JanusService.DeviceNode, "ProfileId", TransactionProfile.ProfileId).AddE("USED_DEVICE")
                     .From("c").Property("CreatedAt", DateTime.UtcNow).Iterate();
             }
 
-            _g.V().Has(JanusService.TransactionNode, "PlatformId", Transaction.PlatformId)
+            _g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId)
                 .As("t1").V().Has(JanusService.DeviceNode, "ProfileId", TransactionProfile.ProfileId)
                 .AddE("EXECUTED_ON").From("t1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
             return true;

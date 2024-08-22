@@ -353,9 +353,10 @@ public class TransferService : ITransferService
                     DeviceId = request.DeviceId,
                     DeviceType = request.DeviceType,
                     IpAddress = request.IpAddress,
+                    CreatedAt = DateTime.Now,
                     Type = "Device"
                 };
-                _Client.IndexDocument(profile);
+                var response = _Client.IndexDocument(profile);
                 return profile;
             }
             return ProfileRequest.Documents.First();
@@ -411,7 +412,10 @@ public class TransferService : ITransferService
                 foreach (var record in records)
                 {
                     var request = MakeRequest(record);
-                    await Ingest(request, true);
+                    var requestString = JsonConvert.SerializeObject(request);
+                    var queueName = _configuration.GetValue<string>("IngestQueueName");
+                    _queuePublisherService.Publish(queueName, requestString);
+                    // await Ingest(request, true);
                 }
                 //   await _graphIngestService.RunAnalysis(data.ObservatoryId);
             }

@@ -100,7 +100,7 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
-
+app.UseHangfireDashboard();
 
 if (app.Environment.IsDevelopment())
 {
@@ -115,19 +115,17 @@ else
 
 app.UseCors("ClientPermission");
 app.UseHttpsRedirection();
-app.UseAuthentication();
 
-app.UseHangfireDashboard();
 var dashboardOptions =
             new DashboardOptions
             {
                 IgnoreAntiforgeryToken = true
             };
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+app.UseHangfireDashboard("/jobs", new DashboardOptions
 {
     Authorization = new[] { new UseHangfireDashboardFilter() } // Allow everyone to access
 });
-
+app.UseAuthentication();
 app.UseCors("AllowAllOrigins");
 app.UseAuthorization();
 app.MapControllers();

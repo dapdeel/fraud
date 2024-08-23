@@ -146,7 +146,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         return response;
     }
 
-    public TransactionGraphDetails GetTransactions(int ObservatoryId, DateTime TransactionDate, int pageNumber, int batch)
+    public List<TransactionGraphDetails> GetTransactions(int ObservatoryId, DateTime TransactionDate, int pageNumber, int batch)
     {
         var connected = connect();
         if (!connected || _connector == null)
@@ -157,14 +157,20 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         int from = pageNumber * batch;
         var Transactions = g.V().HasLabel(JanusService.TransactionNode)
         .Has("ObservatoryId", ObservatoryId).Has("TransactionDate", P.Gte(TransactionDate))
-        .Range<dynamic>(from, batch).ValueMap<dynamic, dynamic>(true)
-        .Next();
-        var response = new TransactionGraphDetails
+        .Range<dynamic>(from, batch).ToList();
+        var data = new List<TransactionGraphDetails>();
+
+        foreach (var vertex in Transactions)
         {
-            Edges = null,
-            Node = Transactions
-        };
-        return response;
+            var NodeDetails = g.V(vertex?.Id).ValueMap<dynamic, dynamic>().Next();
+            var response = new TransactionGraphDetails
+            {
+                Edges = null,
+                Node = NodeDetails
+            };
+            data.Add(response);
+        }
+        return data;
     }
 
     public long GetTransactionCount(int ObservatoryId, DateTime TransactionDate)

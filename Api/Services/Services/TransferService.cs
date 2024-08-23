@@ -113,7 +113,7 @@ public class TransferService : ITransferService
             }
             else
             {
-                BackgroundJob.Enqueue(() => _graphIngestService.IngestTransactionInGraph(TransactionData));
+                BackgroundJob.Schedule(() => _graphIngestService.IngestTransactionInGraph(TransactionData), TimeSpan.FromMinutes(2));
             }
 
             return transaction;

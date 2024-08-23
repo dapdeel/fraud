@@ -27,7 +27,7 @@ namespace Api.Controllers
             {
                 var transactions = _transactionService.GetAllTransactions(transactionRequest.ObservatoryId
                 , transactionRequest.dateTime, transactionRequest.pageNumber, transactionRequest.batchSize);
-                return Ok(new ApiResponse<TransactionGraphDetails>
+                return Ok(new ApiResponse<List<TransactionGraphDetails>>
                 {
                     Status = "success",
                     Data = transactions

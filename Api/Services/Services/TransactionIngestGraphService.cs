@@ -200,7 +200,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
 
-            _g.AddV(JanusService.TransactionNode)
+          _g.AddV(JanusService.TransactionNode)
              .Property("PlatformId", Transaction.PlatformId)
              .Property("TransactionId", Transaction.TransactionId)
              .Property("Amount", Transaction.Amount)
@@ -209,15 +209,20 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
              .Property("Type", TransactionType.Withdrawal)
              .Property("Currency", Transaction.Currency)
              .Property("Description", Transaction.Description)
-             .Property("ObservatoryId", Transaction.ObservatoryId).Iterate();
+             .Property("ObservatoryId", Transaction.ObservatoryId)
+             .As("TransactionNode").V().HasLabel(JanusService.AccountNode)
+             .Has("AccountId", DebitAccount.AccountId).As("DebitAccountNode")
+             .V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccount.AccountId).As("CreditAccountNode")
+             .AddE("SENT").From("DebitAccountNode").To("TransactionNode").Property("CreatedAt", Transaction.CreatedAt)
+             .AddE("RECEIVED").From("TransactionNode").To("CreditAccountNode").Property("CreatedAt", Transaction.CreatedAt)
+             .Iterate();
+            //     _g.V().HasLabel(JanusService.AccountNode).Has("AccountId", DebitAccount.AccountId).As("A1")
+            //    .V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId).AddE("SENT")
+            //    .From("A1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
 
-            _g.V().HasLabel(JanusService.AccountNode).Has("AccountId", DebitAccount.AccountId).As("A1")
-           .V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId).AddE("SENT")
-           .From("A1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
-
-            _g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId)
-            .As("T1").V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccount.AccountId)
-            .AddE("RECEIVED").From("T1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
+            //     _g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId)
+            //     .As("T1").V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccount.AccountId)
+            //     .AddE("RECEIVED").From("T1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
             return true;
         }
         catch (Exception exception)

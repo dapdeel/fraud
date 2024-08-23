@@ -155,7 +155,7 @@ public class TransferService : ITransferService
             var CustomerRequest =
             _Client.Search<TransactionDocument>(c =>
             c.Size(1).Query(q => q.Bool(q => q.Must(
-            sh => sh.Match(m => m.Field(f => f.TransactionId).Query(PlatformId))
+            sh => sh.Match(m => m.Field(f => f.PlatformId).Query(PlatformId))
             ))));
 
             return CustomerRequest.Hits.First();
@@ -380,7 +380,7 @@ public class TransferService : ITransferService
                 f => f.Bool(b => b.Should(sh => sh.MatchPhrase(mp => mp.Field(f => f.CustomerId).Query(customer.CustomerId))))
                 )
             )));
-            if (ProfileRequest.Documents.Count <= 1)
+            if (ProfileRequest.Documents.Count <= 0)
             {
                 var profile = new DeviceDocument
                 {

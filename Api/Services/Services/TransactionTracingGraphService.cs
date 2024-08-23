@@ -145,4 +145,37 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         };
         return response;
     }
+
+    public TransactionGraphDetails GetTransactions(int ObservatoryId, DateTime TransactionDate, int pageNumber, int batch)
+    {
+        var connected = connect();
+        if (!connected || _connector == null)
+        {
+            throw new ValidateErrorException("Unable to Connect to Graph Transaction");
+        }
+        var g = _connector.traversal();
+        int from = pageNumber * batch;
+        var Transactions = g.V().HasLabel(JanusService.TransactionNode)
+        .Has("ObservatoryId", ObservatoryId).Has("TransactionDate", P.Gte(TransactionDate))
+        .Range<dynamic>(from, batch).ValueMap<dynamic, dynamic>(true)
+        .Next();
+        var response = new TransactionGraphDetails
+        {
+            Edges = null,
+            Node = Transactions
+        };
+        return response;
+    }
+
+    public long GetTransactionCount(int ObservatoryId, DateTime TransactionDate)
+    {
+        var connected = connect();
+        if (!connected || _connector == null)
+        {
+            throw new ValidateErrorException("Unable to Connect to Graph Transaction");
+        }
+        var g = _connector.traversal();
+        var totalTransactions = g.V().HasLabel(JanusService.TransactionNode).Has("ObservatoryId", ObservatoryId).Has("TransactionDate", P.Gte(TransactionDate)).Count().Next();
+        return totalTransactions;
+    }
 }

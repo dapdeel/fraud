@@ -21,6 +21,10 @@ namespace Api.Services.TransactionTracing
                 .CountAsync(t => (t.DebitAccount.AccountNumber == accountNumber || t.CreditAccount.AccountNumber == accountNumber) &&
                                  t.TransactionDate >= DateTime.UtcNow.AddDays(-30));
         }
+        public TransactionGraphDetails GetAllTransactions(int ObservatoryId, DateTime fromDate, int pageNumber, int batchSize)
+        {
+            return _transactionTracingGraphService.GetTransactions(ObservatoryId, fromDate, pageNumber, batchSize);
+        }
 
         public async Task<decimal> GetTotalAmountLast30Days(string accountNumber)
         {
@@ -87,5 +91,10 @@ namespace Api.Services.TransactionTracing
             var response = _transactionTracingGraphService.GetNode(observatoryId, nodeId);
             return response;
         }
+        public long GetTransactionCount(int ObservatoryId, DateTime dateTime)
+        {
+           return  _transactionTracingGraphService.GetTransactionCount(ObservatoryId,dateTime);
+        }
+
     }
 }

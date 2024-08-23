@@ -1,15 +1,17 @@
-﻿using Api.Models; 
+﻿using Api.Models;
 using Api.Services.TransactionTracing;
 using Api.Models.Responses;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using Api.DTOs;
 using Api.CustomException;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionTracingService _transactionService;
@@ -18,6 +20,72 @@ namespace Api.Controllers
         {
             _transactionService = transactionService;
         }
+        [HttpGet("all")]
+        public IActionResult GetTransactions(TransactionListRequest transactionRequest)
+        {
+            try
+            {
+                var transactions = _transactionService.GetAllTransactions(transactionRequest.ObservatoryId
+                , transactionRequest.dateTime, transactionRequest.pageNumber, transactionRequest.batchSize);
+                return Ok(new ApiResponse<TransactionGraphDetails>
+                {
+                    Status = "success",
+                    Data = transactions
+                });
+            }
+            catch (ValidateErrorException ex)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Error = new ApiError { Code = "", Details = ex.Message },
+                    Message = ex.Message
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "An unexpected error occurred.",
+                    Error = new ApiError { Code = "", Details = ex.Message }
+                });
+            }
+        }
+        [HttpGet("count/{ObservatoryId}/{startDate}")]
+        public  IActionResult GetTransactionsCount(int ObservatoryId, DateTime startDate)
+        {
+            try
+            {
+                var transactions = _transactionService.GetTransactionCount(ObservatoryId,startDate);
+        
+                return Ok(new ApiResponse<long>
+                {
+                    Status = "success",
+                    Data = transactions
+                });
+            }
+            catch (ValidateErrorException ex)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Error = new ApiError { Code = "", Details = ex.Message },
+                    Message = ex.Message
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "An unexpected error occurred.",
+                    Error = new ApiError { Code = "", Details = ex.Message }
+                });
+            }
+        }
+
+
 
         [HttpGet("total-transactions/last-30-days/{accountNumber}")]
         public async Task<IActionResult> GetTotalTransactionsLast30Days(string accountNumber)
@@ -40,7 +108,7 @@ namespace Api.Controllers
                     Message = ex.Message
                 });
             }
-            catch (System.Exception ex) 
+            catch (System.Exception ex)
             {
                 return StatusCode(500, new ApiResponse<dynamic>
                 {
@@ -72,7 +140,7 @@ namespace Api.Controllers
                     Message = ex.Message
                 });
             }
-            catch (System.Exception ex) 
+            catch (System.Exception ex)
             {
                 return StatusCode(500, new ApiResponse<dynamic>
                 {
@@ -104,39 +172,7 @@ namespace Api.Controllers
                     Message = ex.Message
                 });
             }
-            catch (System.Exception ex) 
-            {
-                return StatusCode(500, new ApiResponse<dynamic>
-                {
-                    Status = "error",
-                    Message = "An unexpected error occurred.",
-                    Error = new ApiError { Code = "", Details = ex.Message }
-                });
-            }
-        }
-
-        [HttpGet("all/{accountNumber}")]
-        public async Task<IActionResult> GetAllTransactions(string accountNumber)
-        {
-            try
-            {
-                var transactions = await _transactionService.GetAllTransactions(accountNumber);
-                return Ok(new ApiResponse<List<Transaction>>
-                {
-                    Status = "success",
-                    Data = transactions
-                });
-            }
-            catch (ValidateErrorException ex)
-            {
-                return BadRequest(new ApiResponse<dynamic>
-                {
-                    Status = "ValidationError",
-                    Error = new ApiError { Code = "", Details = ex.Message },
-                    Message = ex.Message
-                });
-            }
-            catch (System.Exception ex) 
+            catch (System.Exception ex)
             {
                 return StatusCode(500, new ApiResponse<dynamic>
                 {
@@ -210,7 +246,7 @@ namespace Api.Controllers
                     Message = ex.Message
                 });
             }
-            catch (System.Exception ex) 
+            catch (System.Exception ex)
             {
                 return StatusCode(500, new ApiResponse<dynamic>
                 {
@@ -222,7 +258,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("customer/{customerId}")]
-        public async Task<IActionResult> GetTransactionsByCustomerId(string customerId) 
+        public async Task<IActionResult> GetTransactionsByCustomerId(string customerId)
         {
             try
             {
@@ -242,7 +278,7 @@ namespace Api.Controllers
                     Message = ex.Message
                 });
             }
-            catch (System.Exception ex) 
+            catch (System.Exception ex)
             {
                 return StatusCode(500, new ApiResponse<dynamic>
                 {
@@ -253,4 +289,5 @@ namespace Api.Controllers
             }
         }
     }
+
 }

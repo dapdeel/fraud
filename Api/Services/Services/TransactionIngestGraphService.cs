@@ -115,7 +115,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         finally
         {
-            _connector.Client().Dispose();
+            if(_connector.Client != null)
+                _connector.Client().Dispose();
         }
     }
     private async Task<bool> AddUserAccountEdge(CustomerDocument Customer, AccountDocument Account)

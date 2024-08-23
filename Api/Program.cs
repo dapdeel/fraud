@@ -125,6 +125,8 @@ app.UseHangfireDashboard("/jobs", new DashboardOptions
 {
     Authorization = new[] { new UseHangfireDashboardFilter() } // Allow everyone to access
 });
+app.MapHangfireDashboard();
+
 app.UseAuthentication();
 app.UseCors("AllowAllOrigins");
 app.UseAuthorization();

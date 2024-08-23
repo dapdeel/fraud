@@ -86,7 +86,6 @@ namespace Api.Controllers
         }
 
 
-
         [HttpGet("total-transactions/last-30-days/{accountNumber}")]
         public async Task<IActionResult> GetTotalTransactionsLast30Days(string accountNumber)
         {

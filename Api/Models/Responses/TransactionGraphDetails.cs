@@ -7,3 +7,10 @@ public class TransactionGraphDetails
     public IDictionary<dynamic, dynamic>? Node { get; set; }
 
 }
+
+public class TransactionGraphEdgeDetails
+{
+    public required IList<IDictionary<string,object>> Edges { get; set; }
+    public IDictionary<dynamic, dynamic>? Node { get; set; }
+
+}

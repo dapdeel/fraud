@@ -58,13 +58,13 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         };
         return response;
     }
-    public List<TransactionGraphDetails> Trace(DateTime Date, string AccountNumber, string BankCode, string CountryCode)
+    public List<TransactionGraphEdgeDetails> Trace(DateTime Date, string AccountNumber, string BankCode, string CountryCode)
     {
         var Bank = _context.Banks.Where(b => b.Code == BankCode && b.Country == CountryCode).First();
         var ValidObservatories = _context.Observatories
             .Where(o => o.ObservatoryType == ObservatoryType.Swtich || (o.ObservatoryType == ObservatoryType.Bank && o.BankId == Bank.Id))
             .ToList();
-        var data = new List<TransactionGraphDetails>();
+        var data = new List<TransactionGraphEdgeDetails>();
         foreach (var Observatory in ValidObservatories)
         {
             var connected = connect(Observatory.Id);
@@ -84,8 +84,8 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             foreach (var vertex in transactionNodes)
             {
                 var NodeDetails = g.V(vertex?.Id).ValueMap<dynamic, dynamic>().Next();
-                var Edges = g.V(vertex?.Id).BothE().ToList();
-                var response = new TransactionGraphDetails
+                var Edges = g.V(vertex?.Id).BothE().As("E").BothV().As("V").Select<object>("E","V").ToList();
+                var response = new TransactionGraphEdgeDetails
                 {
                     Edges = Edges,
                     Node = NodeDetails

@@ -153,7 +153,9 @@ void AddServices(WebApplicationBuilder builder)
             {
                 config.UsePostgreSqlStorage(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
-    builder.Services.AddHangfireServer();
+    builder.Services.AddHangfireServer(options =>{
+        options.WorkerCount = 5;
+    });
     // RecurringJob.AddOrUpdate("recurring-job-id", () => , Cron.Daily);
 
 }

@@ -100,12 +100,15 @@ public class TransferService : ITransferService
                 var TransactionProfile = AddDevice(request.DebitCustomer.Device, DebitCustomer, transaction);
                 TransactionData.Device = TransactionProfile;
                 var transactionDetail = GetTransaction(transaction.PlatformId);
-                _Client.Update<TransactionDocument, object>(transactionDetail.Id, t => t.Doc(
-                   new
-                   {
-                       DeviceDocumentId = TransactionProfile.DeviceId
-                   }
-                   ));
+                if (transactionDetail != null)
+                {
+                    _Client.Update<TransactionDocument, object>(transactionDetail.Id, t => t.Doc(
+                       new
+                       {
+                           DeviceDocumentId = TransactionProfile.DeviceId
+                       }
+                       ));
+                }
             }
             if (IndexToGraph)
             {
@@ -148,17 +151,20 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    private Nest.IHit<TransactionDocument> GetTransaction(string PlatformId)
+    private Nest.IHit<TransactionDocument>? GetTransaction(string PlatformId)
     {
         try
         {
             var CustomerRequest =
             _Client.Search<TransactionDocument>(c =>
-            c.Size(1).Query(q => q.Bool(q => q.Must(
-            sh => sh.Match(m => m.Field(f => f.PlatformId).Query(PlatformId))
-            ))));
+            c.Query(q => q.Bool(
+                b => b.Filter(f =>
+                f.Bool(b => b.Should(sh => sh.MatchPhrase(mp => mp.Field(f => f.PlatformId).Query(PlatformId))))
+                //      f => f.Bool(b => b.Should(sh => sh.MatchPhrase(mp => mp.Field(f => f.ObservatoryId).Query(observatoryId.ToString()))))
+                )
+            )));
 
-            return CustomerRequest.Hits.First();
+            return CustomerRequest.Hits.FirstOrDefault();
 
         }
         catch (Exception Exception)

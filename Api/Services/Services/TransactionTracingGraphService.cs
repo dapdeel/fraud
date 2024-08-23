@@ -49,7 +49,12 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         }
 
         var g = _connector.traversal();
-        var NodeDetails = g.V(NodeId).ValueMap<dynamic, dynamic>().Next();
+        var query = g.V(NodeId).ValueMap<dynamic, dynamic>();
+        if (!query.HasNext())
+        {
+            throw new ValidateErrorException("Invalid Node");
+        }
+        var NodeDetails = query.Next();
         var edges = g.V(NodeId).BothE().ToList();
         var response = new TransactionGraphDetails
         {
@@ -84,7 +89,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             foreach (var vertex in transactionNodes)
             {
                 var NodeDetails = g.V(vertex?.Id).ValueMap<dynamic, dynamic>().Next();
-                var Edges = g.V(vertex?.Id).BothE().As("E").BothV().As("V").Select<object>("E","V").ToList();
+                var Edges = g.V(vertex?.Id).BothE().As("E").BothV().As("V").Select<object>("E", "V").ToList();
                 var response = new TransactionGraphEdgeDetails
                 {
                     Edges = Edges,

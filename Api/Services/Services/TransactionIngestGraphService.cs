@@ -5,7 +5,6 @@ using Api.Models.Data;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
 using Gremlin.Net.Structure;
-using Hangfire;
 using Microsoft.AspNetCore.CookiePolicy;
 using Nest;
 
@@ -201,22 +200,22 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
 
-            _g.AddV(JanusService.TransactionNode)
-               .Property("PlatformId", Transaction.PlatformId)
-               .Property("TransactionId", Transaction.TransactionId)
-               .Property("Amount", Transaction.Amount)
-               .Property("TransactionDate", Transaction.TransactionDate)
-               .Property("Timestamp", DateTime.UtcNow)
-               .Property("Type", TransactionType.Withdrawal)
-               .Property("Currency", Transaction.Currency)
-               .Property("Description", Transaction.Description)
-               .Property("ObservatoryId", Transaction.ObservatoryId)
-               .As("TransactionNode").V().HasLabel(JanusService.AccountNode)
-               .Has("AccountId", DebitAccount.AccountId).As("DebitAccountNode")
-               .V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccount.AccountId).As("CreditAccountNode")
-               .AddE("SENT").From("DebitAccountNode").To("TransactionNode").Property("CreatedAt", Transaction.CreatedAt)
-               .AddE("RECEIVED").From("TransactionNode").To("CreditAccountNode").Property("CreatedAt", Transaction.CreatedAt)
-               .Iterate();
+          _g.AddV(JanusService.TransactionNode)
+             .Property("PlatformId", Transaction.PlatformId)
+             .Property("TransactionId", Transaction.TransactionId)
+             .Property("Amount", Transaction.Amount)
+             .Property("TransactionDate", Transaction.TransactionDate)
+             .Property("Timestamp", DateTime.UtcNow)
+             .Property("Type", TransactionType.Withdrawal)
+             .Property("Currency", Transaction.Currency)
+             .Property("Description", Transaction.Description)
+             .Property("ObservatoryId", Transaction.ObservatoryId)
+             .As("TransactionNode").V().HasLabel(JanusService.AccountNode)
+             .Has("AccountId", DebitAccount.AccountId).As("DebitAccountNode")
+             .V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccount.AccountId).As("CreditAccountNode")
+             .AddE("SENT").From("DebitAccountNode").To("TransactionNode").Property("CreatedAt", Transaction.CreatedAt)
+             .AddE("RECEIVED").From("TransactionNode").To("CreditAccountNode").Property("CreatedAt", Transaction.CreatedAt)
+             .Iterate();
             //     _g.V().HasLabel(JanusService.AccountNode).Has("AccountId", DebitAccount.AccountId).As("A1")
             //    .V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId).AddE("SENT")
             //    .From("A1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
@@ -268,11 +267,10 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             return false;
         }
     }
-    public async Task<bool> AddTransactions()
+    private async Task<bool> AddTransactions()
     {
         try
         {
-            _banks = _context.Banks.ToList();
             var CountQuery = _Client.Count<TransactionDocument>(c =>
             c.Query(q =>
                 q.Bool(b => b.Must(
@@ -492,7 +490,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
             connect(ObservatoryId);
-            var response = BackgroundJob.Enqueue(() => AddTransactions());
+            _banks = _context.Banks.ToList();
+            var response = await AddTransactions();
             return true;
         }
         catch (Exception exception)

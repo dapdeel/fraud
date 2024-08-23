@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Hangfire;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -112,7 +113,7 @@ public class TransferController : ControllerBase
     {
         try
         {
-            var response = await _transactionIngestGraphService.RunAnalysis(ObservatoryId);
+            var response = BackgroundJob.Enqueue(() => _transactionIngestGraphService.RunAnalysis(ObservatoryId));
 
             return Ok(new ApiResponse<object>
             {

@@ -98,6 +98,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                        m => m.Match(ma => ma.Field(f => f.Type).Query("Transaction")))
                      )));
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
+                
                 var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                          new
                          {

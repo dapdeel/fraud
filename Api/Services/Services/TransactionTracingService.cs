@@ -1,4 +1,5 @@
-﻿using Api.Data;
+﻿using Api.CustomException;
+using Api.Data;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -68,8 +69,12 @@ namespace Api.Services.TransactionTracing
         }
         public TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId)
         {
+            try{
             var response = _transactionTracingGraphService.GetTransaction(observatoryId, transactionId);
             return response;
+            }catch(Exception exception){
+                throw new ValidateErrorException("Unable to Proceed, Please try Again");
+            }
         }
 
         public async Task<List<Api.Models.Transaction>> GetTransactionsByCustomerId(string customerId)

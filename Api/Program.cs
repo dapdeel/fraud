@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Http.Features;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Hangfire.Dashboard;
+using Amazon.S3;
+using Microsoft.AspNetCore.Builder;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +25,12 @@ builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 2L * 1024 * 1024 * 1024; // 2 GB
 });
+
+
+
+
+builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+builder.Services.AddAWSService<IAmazonS3>();
 
 builder.WebHost.ConfigureKestrel(options =>
 {

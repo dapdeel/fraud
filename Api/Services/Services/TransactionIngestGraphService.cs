@@ -5,6 +5,7 @@ using Api.Models.Data;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
 using Gremlin.Net.Structure;
+using Hangfire;
 using Microsoft.AspNetCore.CookiePolicy;
 using Nest;
 
@@ -63,6 +64,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         return _Client;
 
     }
+    [Queue("ingestqueue")]
     public async Task<bool> IngestTransactionInGraph(TransactionIngestData data)
     {
         try

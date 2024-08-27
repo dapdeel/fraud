@@ -125,7 +125,6 @@ app.UseHangfireDashboard("/jobs", new DashboardOptions
 {
     Authorization = new[] { new UseHangfireDashboardFilter() } // Allow everyone to access
 });
-//app.MapHangfireDashboard();
 
 app.UseAuthentication();
 app.UseCors("AllowAllOrigins");
@@ -153,9 +152,10 @@ void AddServices(WebApplicationBuilder builder)
             {
                 config.UsePostgreSqlStorage(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
-    builder.Services.AddHangfireServer(options =>{
+    builder.Services.AddHangfireServer(options =>
+    {
+        options.Queues = new[] { "ingestqueue", "default" };
         options.WorkerCount = 2;
     });
-    // RecurringJob.AddOrUpdate("recurring-job-id", () => , Cron.Daily);
 
 }

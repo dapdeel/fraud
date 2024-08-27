@@ -1,6 +1,9 @@
 using System.Transactions;
 using Api.Data;
 using Api.CustomException;
+using Amazon.S3;
+using Amazon.S3.Model;
+using Amazon.S3.Transfer;
 using Api.Models;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
@@ -172,7 +175,7 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    public async Task<bool> UploadAndIngest(int ObservatoryId, IFormFile file)
+    /*public async Task<bool> UploadAndIngest(int ObservatoryId, IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
@@ -224,6 +227,88 @@ public class TransferService : ITransferService
             throw new ValidateErrorException($"Internal server error: {ex.Message}");
         }
     }
+*/
+
+    public async Task<bool> UploadAndIngest(int ObservatoryId, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            throw new ValidateErrorException("No file was uploaded.");
+        }
+
+        var awsAccessKey = _configuration.GetValue<string>("AWS:AccessKey");
+        var awsSecretKey = _configuration.GetValue<string>("AWS:SecretKey");
+        var awsBucketName = _configuration.GetValue<string>("AWS:BucketName");
+        var awsRegion = _configuration.GetValue<string>("AWS:Region");
+
+        if (string.IsNullOrEmpty(awsAccessKey) || string.IsNullOrEmpty(awsSecretKey) || string.IsNullOrEmpty(awsBucketName) || string.IsNullOrEmpty(awsRegion))
+        {
+            throw new ValidateErrorException("AWS configuration is invalid.");
+        }
+
+        try
+        {
+            var regionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsRegion);
+            var s3Client = new AmazonS3Client(awsAccessKey, awsSecretKey, regionEndpoint);
+            var transferUtility = new TransferUtility(s3Client);
+
+            var fileExtension = Path.GetExtension(file.FileName);
+            var fileName = Guid.NewGuid().ToString() + fileExtension;
+
+            using (var stream = file.OpenReadStream())
+            {
+                var uploadRequest = new TransferUtilityUploadRequest
+                {
+                    InputStream = stream,
+                    Key = fileName,
+                    BucketName = awsBucketName,
+                    ContentType = file.ContentType,
+                    CannedACL = S3CannedACL.Private
+                };
+
+                await transferUtility.UploadAsync(uploadRequest);
+            }
+            var url = $"https://{awsBucketName}.s3.{awsRegion}.amazonaws.com/{fileName}";
+            var fileRequestUrl = new FileData
+            {
+                Url = url,
+                Name = fileName,
+                ObservatoryId = ObservatoryId
+            };
+
+            var transactionFileDocument = new TransactionFileDocument
+            {
+                Name = fileName,
+                Url = url,
+                ObservatoryId = ObservatoryId,
+                Indexed = false
+            };
+
+            _context.Add(transactionFileDocument);
+            var requestString = JsonConvert.SerializeObject(fileRequestUrl);
+
+            var ingestFileQueueName = _configuration.GetValue<string>("IngestFileQueueName");
+            if (string.IsNullOrEmpty(ingestFileQueueName))
+            {
+                throw new ValidateErrorException("Invalid Queue Name");
+            }
+
+            _queuePublisherService.Publish(ingestFileQueueName, requestString);
+            _context.SaveChanges();
+
+            return true;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            throw new ValidateErrorException($"Error encountered on server when uploading file to S3: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            throw new ValidateErrorException($"Internal server error: {ex.Message}");
+        }
+    }
+
+
     private TransactionTransferRequest MakeRequest(TransactionCsvRecord record)
     {
         var AccountRequest = new AccountRequest
@@ -430,44 +515,113 @@ public class TransferService : ITransferService
         return errors;
     }
 
+    /* public async Task<bool> DownloadFileAndIngest(FileData data)
+     {
+
+         var blobServiceClient = new BlobServiceClient(_blobConnectionString);
+         var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
+         BlobClient blobClient = containerClient.GetBlobClient(data.Name);
+         using (var memoryStream = new MemoryStream())
+         {
+             await blobClient.DownloadToAsync(memoryStream);
+
+             // Reset the stream position to the beginning
+             memoryStream.Position = 0;
+
+             using (var reader = new StreamReader(memoryStream))
+             using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
+             {
+                 HasHeaderRecord = true
+             }))
+             {
+                 var records = csv.GetRecords<TransactionCsvRecord>().ToList();
+
+                 // Process the CSV records
+                 foreach (var record in records)
+                 {
+                     var request = MakeRequest(record);
+                     await Ingest(request, false);
+                 }
+                 var document = _context.TransactionFileDocument.Where(d => d.Name == data.Name).FirstOrDefault();
+                 if (document == null)
+                 {
+                     throw new ValidateErrorException("Invalid Document");
+                 }
+                 document.Indexed = true;
+                 _context.Update(document);
+                 _context.SaveChanges();
+                 await _graphIngestService.RunAnalysis(data.ObservatoryId);
+             }
+         }
+         return true;
+     }*/
+
     public async Task<bool> DownloadFileAndIngest(FileData data)
     {
+        var awsAccessKey = _configuration.GetValue<string>("AWS:AccessKey");
+        var awsSecretKey = _configuration.GetValue<string>("AWS:SecretKey");
+        var awsBucketName = _configuration.GetValue<string>("AWS:BucketName");
+        var awsRegion = _configuration.GetValue<string>("AWS:Region");
 
-        var blobServiceClient = new BlobServiceClient(_blobConnectionString);
-        var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
-        BlobClient blobClient = containerClient.GetBlobClient(data.Name);
-        using (var memoryStream = new MemoryStream())
+        if (string.IsNullOrEmpty(awsAccessKey) || string.IsNullOrEmpty(awsSecretKey) || string.IsNullOrEmpty(awsBucketName) || string.IsNullOrEmpty(awsRegion))
         {
-            await blobClient.DownloadToAsync(memoryStream);
-
-            // Reset the stream position to the beginning
-            memoryStream.Position = 0;
-
-            using (var reader = new StreamReader(memoryStream))
-            using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
-            {
-                HasHeaderRecord = true
-            }))
-            {
-                var records = csv.GetRecords<TransactionCsvRecord>().ToList();
-
-                // Process the CSV records
-                foreach (var record in records)
-                {
-                    var request = MakeRequest(record);
-                    await Ingest(request, false);
-                }
-                var document = _context.TransactionFileDocument.Where(d => d.Name == data.Name).FirstOrDefault();
-                if (document == null)
-                {
-                    throw new ValidateErrorException("Invalid Document");
-                }
-                document.Indexed = true;
-                _context.Update(document);
-                _context.SaveChanges();
-                await _graphIngestService.RunAnalysis(data.ObservatoryId);
-            }
+            throw new ValidateErrorException("AWS configuration is invalid.");
         }
-        return true;
+
+        try
+        {
+            var s3Client = new AmazonS3Client(awsAccessKey, awsSecretKey, Amazon.RegionEndpoint.GetBySystemName(awsRegion));
+
+            var request = new GetObjectRequest
+            {
+                BucketName = awsBucketName,
+                Key = data.Name
+            };
+
+            using (var response = await s3Client.GetObjectAsync(request))
+            using (var memoryStream = new MemoryStream())
+            {
+                await response.ResponseStream.CopyToAsync(memoryStream);
+
+                memoryStream.Position = 0;
+
+                using (var reader = new StreamReader(memoryStream))
+                using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    HasHeaderRecord = true
+                }))
+                {
+                    var records = csv.GetRecords<TransactionCsvRecord>().ToList();
+
+                    foreach (var record in records)
+                    {
+                        var requestRecord = MakeRequest(record);
+                        await Ingest(requestRecord, false);
+                    }
+
+                    var document = _context.TransactionFileDocument.FirstOrDefault(d => d.Name == data.Name);
+                    if (document == null)
+                    {
+                        throw new ValidateErrorException("Invalid Document");
+                    }
+
+                    document.Indexed = true;
+                    _context.Update(document);
+                    _context.SaveChanges();
+
+                    await _graphIngestService.RunAnalysis(data.ObservatoryId);
+                }
+            }
+
+            return true;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            throw new ValidateErrorException($"Error encountered on server when downloading file from S3: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            throw new ValidateErrorException($"Internal server error: {ex.Message}");
+        }
     }
 }

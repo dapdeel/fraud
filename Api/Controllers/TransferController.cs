@@ -108,6 +108,41 @@ public class TransferController : ControllerBase
             });
         }
     }
+
+    [HttpPost("DownloadAndIngest")]
+    public async Task<IActionResult> DownloadAndIngest([FromBody] FileData fileData)
+    {
+        try
+        {
+            var response = await _service.DownloadFileAndIngest(fileData);
+
+            return Ok(new ApiResponse<object>
+            {
+                Status = "success",
+                Message = "Successfully Downloaded and Ingested File",
+                Data = response
+            });
+        }
+        catch (ValidateErrorException Exception)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = Exception.Message },
+                Message = Exception.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ApiResponse<dynamic>
+            {
+                Status = "error",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = "An unexpected error occurred"
+            });
+        }
+    }
+
     [HttpPost("RunAnalysis/{ObservatoryId}")]
     public async Task<IActionResult> RunAnalysis(int ObservatoryId)
     {

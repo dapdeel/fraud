@@ -13,7 +13,7 @@ namespace Api.Services.TransactionTracing
         Task<Api.Models.Transaction> GetTransactionById(int transactionId); // Updated
         TransactionGraphDetails GetAccountNode(int observatoryId, int nodeId);
         List<TransactionGraphEdgeDetails> GetFutureTransactions(DateTime Date, string AccountNumber, string BankCode, string Country);
-        TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId);
+        public TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId);
         Task<List<Api.Models.Transaction>> GetTransactionsByCustomerId(string customerId); // Updated
     }
 }

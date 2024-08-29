@@ -67,13 +67,25 @@ namespace Api.Services.TransactionTracing
         {
             return await _context.Transactions.FindAsync(transactionId);
         }
+
+
         public TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId)
         {
-            try{
-            var response = _transactionTracingGraphService.GetTransaction(observatoryId, transactionId);
-            return response;
-            }catch(Exception exception){
-                throw new ValidateErrorException("Unable to Proceed, Please try Again");
+            try
+            {
+                var response =  _transactionTracingGraphService.GetTransactionAsync(observatoryId, transactionId);
+                return response;
+            }
+            catch (ValidateErrorException ex)
+            {
+               
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Unable to Proceed, Please try Again. Error: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                throw new ValidateErrorException($"Unable to Proceed, Please try Again. Error: {ex.Message}");
             }
         }
 

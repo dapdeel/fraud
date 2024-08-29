@@ -229,7 +229,7 @@ public class TransferService : ITransferService
     }
 */
 
-    public async Task<bool> UploadAndIngest(int ObservatoryId, IFormFile file)
+    public async Task<string> UploadAndIngest(int ObservatoryId, IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
@@ -296,7 +296,7 @@ public class TransferService : ITransferService
             _queuePublisherService.Publish(ingestFileQueueName, requestString);
             _context.SaveChanges();
 
-            return true;
+            return url;
         }
         catch (AmazonS3Exception ex)
         {

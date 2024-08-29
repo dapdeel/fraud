@@ -20,7 +20,7 @@ public class TransactionTracingController : ControllerBase
     {
         try
         {
-            var response = _TracingService.GetTransactionById(ObservatoryId, TransactionId);
+            var response =  _TracingService.GetTransactionById(ObservatoryId, TransactionId);
             return Ok(new ApiResponse<object>
             {
                 Status = "success",
@@ -38,6 +38,7 @@ public class TransactionTracingController : ControllerBase
             });
         }
     }
+
     [HttpGet("Trace/{Date}/{AccountNumber}/{BankCode}/{CountryCode}")]
     public IActionResult GetFutureTransactions(DateTime Date, string AccountNumber, string BankCode, string CountryCode)
     {

@@ -474,7 +474,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         {
             traversal = traversal.HasLabel(JanusService.CustomerNode).Has("CustomerId", customerDocument.CustomerId).As("C1" + customerDocument.CustomerId);
         }
-        if (!accountDocument.Indexed)
+        var doesAccountExist = _g.V().HasLabel(JanusService.AccountNode).Has("AccountId",accountDocument.AccountId).HasNext();
+        if (!accountDocument.Indexed && !doesAccountExist)
         {
             var bank = _banks.Where(b => b.Id == accountDocument.BankId).First();
             traversal.AddV(JanusService.AccountNode)

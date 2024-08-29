@@ -54,9 +54,9 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
      .Query(q => q
          .Bool(b => b
              .Filter(f => f
-                 .Term(t => t.Field("indexed").Value(true)) 
-                 && f.Term(t => t.Field("observatoryId").Value(ObservatoryId)) 
-                 && f.Term(t => t.Field("transactionId.keyword").Value(TransactionId)) 
+                 .Term(t => t.Field("indexed").Value(true))
+                 && f.Term(t => t.Field("observatoryId").Value(ObservatoryId))
+                 && f.Term(t => t.Field("transactionId.keyword").Value(TransactionId))
              )
          )
      )
@@ -121,6 +121,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         return response;
     }
 
+
     public List<TransactionGraphEdgeDetails> Trace(DateTime Date, string AccountNumber, string BankCode, string CountryCode)
     {
         var Bank = _context.Banks.Where(b => b.Code == BankCode && b.Country == CountryCode).First();
@@ -135,19 +136,43 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             {
                 throw new ValidateErrorException("Unable to Connect to Graph Transaction");
             }
+            ElasticClient elasticClient = Observatory.UseDefault ?
+                    _elasticSearchService.connect() :
+                    _elasticSearchService.connect(Observatory.ElasticSearchHost);
 
+            var searchResponse = elasticClient.Search<TransactionDocument>(s => s
+  .Query(q => q
+      .Bool(b => b
+          .Filter(f => f
+              .Term(t => t.Field("indexed").Value(true))
+              && f.Term(t => t.Field("observatoryId").Value(Observatory.Id))
+          //   && f.DateRange(t => t.Field("TransactionDate").GreaterThanOrEquals(Date))
+
+          )
+      )
+  )
+);
+            var transactions = searchResponse.Documents;
+            if (transactions.Count <= 0)
+            {
+                throw new ValidateErrorException("No Transactions found");
+            }
             var g = _connector.traversal();
-            var transactionNodes = g.V().HasLabel(JanusService.TransactionNode)
-                .Has("ObservatoryId", Observatory.Id)
-                .Has("TransactionDate", P.Gte(Date))
-                .Where(__.InE("SENT").OutV().Has("AccountNumber", AccountNumber)
-                .Has("BankCode", BankCode).Has("Country", CountryCode))
-                .ToList();
+            var transactionNodes = g.V().HasLabel(JanusService.TransactionNode);
+            foreach (var transaction in transactions)
+            {
+                transactionNodes = transactionNodes.Or().Has("PlatformId", transaction.PlatformId);
+            }
 
-            foreach (var vertex in transactionNodes)
+            var result = transactionNodes.Where(__.InE("SENT").OutV().Has("AccountNumber", AccountNumber)
+             .Has("BankCode", BankCode).Has("Country", CountryCode))
+             .ToList();
+
+
+            foreach (var vertex in result)
             {
                 var NodeDetails = g.V(vertex?.Id).ValueMap<dynamic, dynamic>().Next();
-                var Edges = g.V(vertex?.Id).BothE().As("E").BothV().As("V").Select<object>("E", "V").ToList();
+                var Edges = g.V(vertex?.Id).OutE("SENT").As("E").BothV().As("V").Select<object>("E", "V").ToList();
                 var response = new TransactionGraphEdgeDetails
                 {
                     Edges = Edges,
@@ -155,10 +180,102 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
                 };
                 data.Add(response);
             }
+
         }
 
         return data;
     }
+
+
+
+
+    /* public List<TransactionGraphEdgeDetails> Trace(DateTime date, string accountNumber, string bankCode, string countryCode)
+     {
+         var bank = _context.Banks.First(b => b.Code == bankCode && b.Country == countryCode);
+         var validObservatories = _context.Observatories
+             .Where(o => o.ObservatoryType == ObservatoryType.Swtich || (o.ObservatoryType == ObservatoryType.Bank && o.BankId == bank.Id))
+             .ToList();
+
+         var data = new List<TransactionGraphEdgeDetails>();
+
+         foreach (var observatory in validObservatories)
+         {
+             ElasticClient elasticClient = observatory.UseDefault ?
+                 _elasticSearchService.connect() :
+                 _elasticSearchService.connect(observatory.ElasticSearchHost);
+
+             var searchResponse = elasticClient.Search<TransactionDocument>(s => s
+                 .Query(q => q
+                     .Bool(b => b
+                         .Filter(f => f
+                             .Term(t => t.Field("observatoryId").Value(observatory.Id))
+                             && f.DateRange(dr => dr
+                                 .Field("transactionDate")
+                                 .GreaterThanOrEquals(date)
+                             )
+                             && f.Term(t => t.Field("accountNumber.keyword").Value(accountNumber))
+                             && f.Term(t => t.Field("bankCode.keyword").Value(bankCode))
+                             && f.Term(t => t.Field("country.keyword").Value(countryCode))
+                         )
+                     )
+                 )
+             );
+
+             if (!searchResponse.IsValid || searchResponse.Documents.Count == 0)
+             {
+                 continue;
+             }
+
+             // Connect to the graph database
+             var connected = connect(observatory.Id);
+             if (!connected || _connector == null)
+             {
+                 throw new ValidateErrorException("Unable to Connect to Graph Transaction");
+             }
+
+             var g = _connector.traversal();
+
+             foreach (var document in searchResponse.Documents)
+             {
+                 var platformId = document.PlatformId;
+
+                 var transactionNode = g.V()
+                     .HasLabel(JanusService.TransactionNode)
+                     .Has("PlatformId", platformId)
+                     .Id();
+
+                 if (!transactionNode.HasNext())
+                 {
+                     continue;
+                 }
+
+                 var nodeId = transactionNode.Next();
+                 var nodeDetails = g.V(nodeId).ValueMap<dynamic, dynamic>().Next();
+
+                 IList<IDictionary<string, object>> edges = g.V(nodeId).BothE().ToList().Select(edge =>
+      (IDictionary<string, object>)new Dictionary<string, object>
+      {
+             {"id", edge.Id.ToString()},
+             {"label", edge.Label},
+             {"properties", edge.Properties.ToDictionary(p => p.Key, p => (object)p.Value)}
+      }
+  ).ToList();
+
+
+                 var response = new TransactionGraphEdgeDetails
+                 {
+                     Edges = edges,
+                     Node = nodeDetails
+                 };
+
+                 data.Add(response);
+             }
+         }
+
+         return data;
+     }*/
+
+
 
     private bool connect(int ObservatoryId)
     {

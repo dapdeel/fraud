@@ -154,6 +154,7 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddHostedService<FileReaderConsumerService>();
     builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
     builder.Services.AddTransient<ITransactionIngestGraphService, TransactionIngestGraphService>();
+    builder.Services.AddScoped<IAccountService,AccountService>();
     builder.Services.AddScoped<ITransactionTracingGraphService, TransactionTracingGraphService>();
     builder.Services.AddScoped<IElasticSearchService, ElasticSearchService>();
     builder.Services.AddHangfire(config =>

@@ -5,6 +5,7 @@ public class ElasticSearchService : IElasticSearchService
 {
     private IConfiguration _configuration;
     private string? DefaultHost;
+
     public ElasticSearchService(IConfiguration configuration)
     {
         _configuration = configuration;
@@ -27,4 +28,28 @@ public class ElasticSearchService : IElasticSearchService
         return client;
     }
 
+
+}
+
+public static class Node
+{
+    public const string Transaction = "Transaction";
+    public const string Account = "Account";
+    public const string Device = "Device";
+    public const string Customer = "Customer";
+}
+
+public static class Edge
+{
+    public const string Owns = "Owns";
+    public const string Transfered = "Transfered";
+    public const string Used = "Used";
+    public const string Sent = "Sent";
+    public const string Received = "Received";
+    public const string UsedOn = "UsedOn";
+}
+
+public static class DocumentType {
+     public const string Node = "Node";
+    public const string Edge = "Edge";
 }

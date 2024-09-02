@@ -47,3 +47,35 @@ public class DeviceDocument
     public DateTime UpdatedAt { get; set; }
 
 }
+
+public class OwnsEdgeDocument
+{
+    public required string Document { get; set; }
+    public required string From { get; set; }
+    public required string To { get; set; }
+    public required string Type { get; set; }
+}
+
+public class TransferedEgdeDocument
+{
+    public required string From { get; set; }
+    public required string To { get; set; }
+    public required string Document { get; set; }
+
+    public required int EMEA { get; set; }
+
+    public required DateTime LastTransactionDate { get; set; }
+    public int Weight { get; set; }
+    public int TransactionCount { get; set; }
+    public required string Type { get; set; }
+}
+
+public class UsedDeviceEdgeDocument
+{
+
+    public required string From { get; set; }
+    public required string To { get; set; }
+    public required string Document { get; set; }
+    public required string Type { get; set; }
+
+}

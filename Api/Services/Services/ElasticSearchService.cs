@@ -31,7 +31,7 @@ public class ElasticSearchService : IElasticSearchService
 
 }
 
-public static class Node
+public static class NodeData
 {
     public const string Transaction = "Transaction";
     public const string Account = "Account";
@@ -39,7 +39,7 @@ public static class Node
     public const string Customer = "Customer";
 }
 
-public static class Edge
+public static class EdgeData
 {
     public const string Owns = "Owns";
     public const string Transfered = "Transfered";
@@ -47,6 +47,7 @@ public static class Edge
     public const string Sent = "Sent";
     public const string Received = "Received";
     public const string UsedOn = "UsedOn";
+    public const string ExecutedOn = "ExecutedOn";
 }
 
 public static class DocumentType {

@@ -36,10 +36,10 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     {
         try
         {
-            _connector = _graphService.connect(ObservatoryId);
-            // _graphService.RunIndexQuery();
+            // _connector = _graphService.connect(ObservatoryId);
+            // // _graphService.RunIndexQuery();
             _Client = ElasticClient(ObservatoryId);
-            _g = _connector.traversal();
+            // _g = _connector.traversal();
             return true;
         }
         catch (Exception exception)
@@ -70,8 +70,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
             connect(data.ObservatoryId);
-            _g.Tx().Begin();
-
             _banks = _context.Banks.ToList();
             var debitCustomerResponse = IndexSingleCustomerAndAccount(data.DebitCustomer, data.DebitAccount);
             var creditCustomerResponse = IndexSingleCustomerAndAccount(data.CreditCustomer, data.CreditAccount);
@@ -83,24 +81,17 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 var deviceIndexed = AddDevice(data.Device, data.Transaction, data.DebitCustomer);
             }
 
-            await _g.Tx().CommitAsync();
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
-                MarkAccountAsIndexed(data.DebitAccount);
-                MarkAccountAsIndexed(data.CreditAccount);
-                MarkCustomerAsIndexed(data.DebitCustomer);
-                MarkCustomerAsIndexed(data.CreditCustomer);
-                if (data.Device != null)
-                    MarkDeviceIndexed(data.Device);
 
                 var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                  s.Size(1).Query(q => q.Bool(b =>
                   b.Must(
                     m => m.Match(ma => ma.Field(f => f.PlatformId).Query(data.Transaction.PlatformId)),
-                       m => m.Match(ma => ma.Field(f => f.Type).Query("Transaction")))
+                       m => m.Match(ma => ma.Field(f => f.Document).Query(NodeData.Transaction)))
                      )));
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
-                
+
                 var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                          new
                          {
@@ -112,40 +103,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            await _g.Tx().RollbackAsync();
             throw new ValidateErrorException("Unable to Add Transaction");
-            // return false;
-        }
-        finally
-        {
-            if(_connector.Client != null)
-                _connector.Client().Dispose();
-        }
-    }
-    private async Task<bool> AddUserAccountEdge(CustomerDocument Customer, AccountDocument Account)
-    {
-        // var g = _connector.traversal();
-        try
-        {
-            _g.Tx().Begin();
-            var DebitEdgeExists = _g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", Customer.CustomerId)
-              .OutE("Owns")
-              .Where(__.InV().Has(JanusService.AccountNode, "AccountId", Account.AccountId))
-              .HasNext();
-
-            if (!DebitEdgeExists)
-            {
-                _g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", Customer.CustomerId)
-                .As("C").V().HasLabel(JanusService.AccountNode).Has("AccountId", Account.AccountId)
-                .AddE("Owns").From("C").Next();
-            }
-            await _g.Tx().CommitAsync();
-            return true;
-        }
-        catch (Exception Exception)
-        {
-            await _g.Tx().RollbackAsync();
-            return false;
         }
     }
     private bool AddAccountEdge(string DebitAccountId, string CreditAccountId, DateTime TransactionDate, float Amount)
@@ -153,49 +111,58 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
 
-            var relationship = _g.V()
-            .HasLabel(JanusService.AccountNode)
-            .Has("AccountId", DebitAccountId)
-            .BothE("Transfered")
-            .Where(__.OtherV().HasLabel(JanusService.AccountNode)
-            .Has("AccountId", CreditAccountId))
-            .Id();
-            if (relationship.HasNext())
-            {
-                var EdgeId = relationship.Next();
-                var LastEMEA = _g.E(EdgeId).Values<double>("LastEMEA").Next();
-                var LastTransactionDate = DateTime.Parse(_g.E(EdgeId).Values<string>("LastTransactionDate").Next());
-                var LastWeight = _g.E(EdgeId).Values<object>("LastWeight").Next();
-                var TransactionCount = _g.E(EdgeId).Values<int>("TransactionCount").Next();
-                var EMEA = _FrequencyCalculator.Calculate(LastEMEA, TransactionDate, LastTransactionDate);
-                var Weight = _WeightCalculator.Calculate(EMEA, Amount, LastTransactionDate);
+            var searchResponse = _Client.Search<TransferedEgdeDocument>(s => s.Size(1).Query(q => q.Bool(b => b.Must(
+                m => m.Term(t => t.Field(f => f.From).Value(DebitAccountId)),
+                m => m.Term(t => t.Field(f => f.To).Value(CreditAccountId))
+            ))));
 
-                var edge = _g.E(EdgeId);
-                edge = edge.Property("LastEMEA", EMEA);
-                edge = edge.Property("LastTransactionDate", TransactionDate);
-                edge = edge.Property("LastWeight", Weight);
-                edge = edge.Property("TransactionCount", TransactionCount + 1);
-                edge.Iterate();
+            if (searchResponse.Hits.Count <= 0)
+            {
+                var EMEA = _FrequencyCalculator.Calculate();
+                var Weight = _WeightCalculator.Calculate(EMEA, Amount);
+                var Document = new TransferedEgdeDocument
+                {
+                    Document = EdgeData.Transfered,
+                    EMEA = EMEA,
+                    From = DebitAccountId,
+                    To = CreditAccountId,
+                    EdgeId = Guid.NewGuid().ToString(),
+                    Weight = Weight,
+                    LastTransactionDate = TransactionDate,
+                    TransactionCount = 1,
+                    Type = DocumentType.Node,
+                    CreatedAt = DateTime.Now
+                };
+                var response = _Client.IndexDocument(Document);
+                return response.IsValid;
             }
             else
             {
+                var updateDocument = searchResponse.Hits.First();
+                var searchDocument = searchResponse.Documents.First();
 
-                var EMEA = _FrequencyCalculator.Calculate();
-                var Weight = _WeightCalculator.Calculate(EMEA, Amount);
-                _g.V().HasLabel(JanusService.AccountNode).Has("AccountId", DebitAccountId)
-                      .As("D").V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccountId)
-                      .AddE("Transfered").From("D")
-                      .Property("LastEMEA", EMEA)
-                      .Property("LastTransactionDate", TransactionDate)
-                      .Property("LastWeight", Weight)
-                      .Property("TransactionCount", 1)
-                      .Iterate();
+                var LastEMEA = searchDocument.EMEA;
+                var LastTransactionDate = searchDocument.LastTransactionDate;
+                var LastWeight = searchDocument.Weight;
+                var TransactionCount = searchDocument.TransactionCount;
+                var EMEA = _FrequencyCalculator.Calculate(LastEMEA, TransactionDate, LastTransactionDate);
+                var Weight = _WeightCalculator.Calculate(EMEA, Amount, LastTransactionDate);
+
+                var response = _Client.Update<TransferedEgdeDocument, object>(updateDocument.Id, t => t.Doc(
+                new
+                {
+                    EMEA,
+                    Weight,
+                    LastTransactionDate = TransactionDate,
+                    TransactionCount = TransactionCount + 1
+                }
+                ));
+                return response.IsValid;
             }
-            return true;
         }
         catch (Exception Exception)
         {
-            return false;
+            throw new ValidateErrorException(Exception.Message);
         }
     }
 
@@ -203,35 +170,31 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     {
         try
         {
-
-          _g.AddV(JanusService.TransactionNode)
-             .Property("PlatformId", Transaction.PlatformId)
-             .Property("TransactionId", Transaction.TransactionId)
-             .Property("Amount", Transaction.Amount)
-             .Property("TransactionDate", Transaction.TransactionDate)
-             .Property("Timestamp", DateTime.UtcNow)
-             .Property("Type", TransactionType.Withdrawal)
-             .Property("Currency", Transaction.Currency)
-             .Property("Description", Transaction.Description)
-             .Property("ObservatoryId", Transaction.ObservatoryId)
-             .As("TransactionNode").V().HasLabel(JanusService.AccountNode)
-             .Has("AccountId", DebitAccount.AccountId).As("DebitAccountNode")
-             .V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccount.AccountId).As("CreditAccountNode")
-             .AddE("SENT").From("DebitAccountNode").To("TransactionNode").Property("CreatedAt", Transaction.CreatedAt)
-             .AddE("RECEIVED").From("TransactionNode").To("CreditAccountNode").Property("CreatedAt", Transaction.CreatedAt)
-             .Iterate();
-            //     _g.V().HasLabel(JanusService.AccountNode).Has("AccountId", DebitAccount.AccountId).As("A1")
-            //    .V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId).AddE("SENT")
-            //    .From("A1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
-
-            //     _g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId)
-            //     .As("T1").V().HasLabel(JanusService.AccountNode).Has("AccountId", CreditAccount.AccountId)
-            //     .AddE("RECEIVED").From("T1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
-            return true;
+            var sentDocument = new SentEdgeDocument
+            {
+                Document = EdgeData.Sent,
+                From = DebitAccount.AccountId,
+                EdgeId = Guid.NewGuid().ToString(),
+                To = Transaction.TransactionId,
+                Type = DocumentType.Edge,
+                CreatedAt = DateTime.Now
+            };
+            var sentDocumentResponse = _Client.IndexDocument(sentDocument);
+            var receivedDocument = new RecievedEdgeDocument
+            {
+                Document = EdgeData.Received,
+                From = Transaction.TransactionId,
+                EdgeId = Guid.NewGuid().ToString(),
+                To = CreditAccount.AccountId,
+                Type = DocumentType.Edge,
+                CreatedAt = DateTime.Now
+            };
+            var receivedDocumentResponse = _Client.IndexDocument(receivedDocument);
+            return sentDocumentResponse.IsValid && receivedDocumentResponse.IsValid;
         }
         catch (Exception exception)
         {
-            return false;
+            throw new ValidateErrorException(exception.Message);
         }
     }
     private bool AddDevice(DeviceDocument TransactionProfile, TransactionDocument Transaction, CustomerDocument Customer)
@@ -239,34 +202,45 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
 
         try
         {
+
+
             if (!TransactionProfile.Indexed)
             {
-                _g.AddV(JanusService.DeviceNode)
-                    .Property("ProfileId", TransactionProfile.ProfileId)
-                        .Property("DeviceId", TransactionProfile.DeviceId)
-            .Property("DeviceType", TransactionProfile.DeviceType)
-            .Property("IpAddress", TransactionProfile.IpAddress)
-            .Property("Timestamp", DateTime.UtcNow);
+                var searchResponse = _Client.Search<UsedDeviceEdgeDocument>(s => s.Size(1).Query(q => q.Bool(b => b.Must(
+                        m => m.Term(t => t.Field(f => f.From).Value(Customer.CustomerId)),
+                    m => m.Term(t => t.Field(f => f.To).Value(TransactionProfile.ProfileId)),
+                    m => m.Term(t => t.Field(f => f.Document).Value(NodeData.Device))
+                    ))));
+                if (searchResponse.Documents.Count() <= 0)
+                {
+
+                    var UsedDeviceEdgeDocument = new UsedDeviceEdgeDocument
+                    {
+                        Document = EdgeData.Used,
+                        EdgeId = Guid.NewGuid().ToString(),
+                        From = Customer.CustomerId,
+                        To = TransactionProfile.ProfileId,
+                        Type = DocumentType.Edge,
+                        CreatedAt = DateTime.Now
+                    };
+                    _Client.IndexDocument(UsedDeviceEdgeDocument);
+                    MarkDeviceIndexed(TransactionProfile);
+                }
             }
 
-            var DeviceEdgeExist = _g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", Customer.CustomerId)
-                .OutE("USED_DEVICE")
-                .Where(__.InV().Has(JanusService.DeviceNode, "ProfileId", TransactionProfile.ProfileId))
-                .HasNext();
-
-            if (!DeviceEdgeExist)
+            var ExecutedOnEdgeDocument = new ExecutedOnEdgeDocument
             {
-                _g.V().HasLabel(JanusService.CustomerNode).Has("CustomerId", Customer.CustomerId).As("c")
-                    .V().Has(JanusService.DeviceNode, "ProfileId", TransactionProfile.ProfileId).AddE("USED_DEVICE")
-                    .From("c").Property("CreatedAt", DateTime.UtcNow).Iterate();
-            }
-
-            _g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", Transaction.PlatformId)
-                .As("t1").V().Has(JanusService.DeviceNode, "ProfileId", TransactionProfile.ProfileId)
-                .AddE("EXECUTED_ON").From("t1").Property("CreatedAt", Transaction.CreatedAt).Iterate();
-            return true;
+                Document = EdgeData.ExecutedOn,
+                EdgeId = Guid.NewGuid().ToString(),
+                From = Transaction.TransactionId,
+                To = TransactionProfile.ProfileId,
+                Type = DocumentType.Edge,
+                CreatedAt = DateTime.Now
+            };
+            var response = _Client.IndexDocument(ExecutedOnEdgeDocument);
+            return response.IsValid;
         }
-        catch (Exception Exception)
+        catch (Exception)
         {
             return false;
         }
@@ -289,7 +263,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             var totalBatches = CountQuery.Count / BatchSize;
             for (var i = 0; i <= totalBatches; i++)
             {
-                _g.Tx().Begin();
                 var from = i * BatchSize;
                 var Response = _Client.Search<TransactionDocument>(c =>
                 c.From(from).Size(BatchSize).Query(q =>
@@ -303,7 +276,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                     throw new ValidateErrorException("Invalid search");
                 }
                 await AddTransactionsBatch(Response);
-                await _g.Tx().CommitAsync();
             }
             return true;
         }
@@ -406,7 +378,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                        s.Size(1).Query(q => q.Bool(b =>
                         b.Must(
                           m => m.Match(ma => ma.Field(f => f.AccountId).Query(accountDocument.AccountId)),
-                             m => m.Match(ma => ma.Field(f => f.Type).Query("Account")))
+                             m => m.Match(ma => ma.Field(f => f.Document).Query(NodeData.Account)))
                            )));
         var updateDocument = query.Hits.First();
         var response = _Client.Update<AccountDocument, object>(updateDocument.Id, t => t.Doc(
@@ -423,7 +395,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                        s.Size(1).Query(q => q.Bool(b =>
                         b.Must(
                           m => m.Match(ma => ma.Field(f => f.CustomerId).Query(customerDocument.CustomerId)),
-                             m => m.Match(ma => ma.Field(f => f.Type).Query("Customer")))
+                             m => m.Match(ma => ma.Field(f => f.Document).Query(NodeData.Customer)))
                            )));
         var updateDocument = query.Hits.First();
         var response = _Client.Update<CustomerDocument, object>(updateDocument.Id, t => t.Doc(
@@ -440,7 +412,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                          s.Size(1).Query(q => q.Bool(b =>
                           b.Must(
                             m => m.Match(ma => ma.Field(f => f.ProfileId).Query(deviceDocument.ProfileId)),
-                               m => m.Match(ma => ma.Field(f => f.Type).Query("Device")))
+                               m => m.Match(ma => ma.Field(f => f.Document).Query(NodeData.Device)))
                              )));
         if (query.Hits.Count <= 0)
         {
@@ -457,37 +429,24 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     }
     private bool IndexSingleCustomerAndAccount(CustomerDocument customerDocument, AccountDocument accountDocument)
     {
-        var traversal = _g.V();
         if (accountDocument.Indexed)
         {
             return true;
         }
-        if (!customerDocument.Indexed)
+        var bank = _banks.Where(b => b.Id == accountDocument.BankId).First();
+        var Document = new OwnsEdgeDocument
         {
-            traversal = _g.AddV(JanusService.CustomerNode)
-                                   .Property("CustomerId", customerDocument.CustomerId)
-                                   .Property("Name", customerDocument.FullName)
-                                   .Property("Phone", customerDocument.Phone)
-                                   .Property("Email", customerDocument.Email).As("C1" + customerDocument.CustomerId);
-        }
-        else
-        {
-            traversal = traversal.HasLabel(JanusService.CustomerNode).Has("CustomerId", customerDocument.CustomerId).As("C1" + customerDocument.CustomerId);
-        }
-        var doesAccountExist = _g.V().HasLabel(JanusService.AccountNode).Has("AccountId",accountDocument.AccountId).HasNext();
-        if (!accountDocument.Indexed && !doesAccountExist)
-        {
-            var bank = _banks.Where(b => b.Id == accountDocument.BankId).First();
-            traversal.AddV(JanusService.AccountNode)
-                                 .Property("AccountId", accountDocument.AccountId)
-                                 .Property("AccountNumber", accountDocument.AccountNumber)
-                                 .Property("BankCode", bank.Code)
-                                 .Property("Country", bank.Country)
-                                 .Property("Balance", accountDocument?.AccountBalance).AddE("Owns")
-                                 .From("C1" + customerDocument.CustomerId).Iterate();
-        }
-        return true;
-
+            Document = EdgeData.Owns,
+            EdgeId = Guid.NewGuid().ToString(),
+            From = customerDocument.CustomerId,
+            To = accountDocument.AccountId,
+            Type = DocumentType.Edge,
+            CreatedAt = DateTime.Now
+        };
+        var response = _Client.IndexDocument(Document);
+        MarkCustomerAsIndexed(customerDocument);
+        MarkAccountAsIndexed(accountDocument);
+        return response.IsValid;
     }
     public async Task<bool> RunAnalysis(int ObservatoryId)
     {

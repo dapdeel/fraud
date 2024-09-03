@@ -22,22 +22,25 @@ public class TransactionDocument
     public int ObservatoryId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-
+    public required string Document { get; set; }
 }
 
 public class SentEdgeDocument
 {
     public required string From { get; set; }
     public required string To { get; set; }
+    public required string EdgeId { get; set; }
     public required string Document { get; set; }
     public required string Type { get; set; }
     public DateTime CreatedAt { get; set; }
+    
 }
 public class RecievedEdgeDocument
 {
     public required string From { get; set; }
     public required string To { get; set; }
     public required string Document { get; set; }
+    public required string EdgeId { get; set; }
     public required string Type { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -48,5 +51,6 @@ public class ExecutedOnEdgeDocument
     public required string To { get; set; }
     public required string Document { get; set; }
     public required string Type { get; set; }
+    public required string EdgeId { get; set; }
     public DateTime CreatedAt { get; set; }
 }

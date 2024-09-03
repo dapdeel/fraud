@@ -383,7 +383,8 @@ public class TransferService : ITransferService
                     Email = customerRequest.Email,
                     Phone = customerRequest.Phone,
                     CreatedAt = DateTime.Now,
-                    Type = "Customer"
+                    Document = NodeData.Customer,
+                    Type = DocumentType.Node
                 };
                 var response = _Client.IndexDocument(Document);
                 return Document;
@@ -418,7 +419,8 @@ public class TransferService : ITransferService
                     AccountType = accountRequest.AccountType,
                     CustomerId = customer.CustomerId,
                     CreatedAt = DateTime.Now,
-                    Type = "Account"
+                    Type = DocumentType.Node,
+                    Document = NodeData.Account
                 };
                 _Client.IndexDocument(Account);
                 return Account;
@@ -448,7 +450,8 @@ public class TransferService : ITransferService
                 Description = request.Transaction.Description,
                 TransactionType = TransactionType.Transfer,
                 TransactionDate = request.Transaction.TransactionDate.ToUniversalTime(),
-                Type = "Transaction"
+                Type = DocumentType.Node,
+                Document = NodeData.Transaction
             };
 
             var response = _Client.IndexDocument(transaction);
@@ -482,7 +485,8 @@ public class TransferService : ITransferService
                     IpAddress = request.IpAddress,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now,
-                    Type = "Device"
+                    Type = DocumentType.Node,
+                    Document = NodeData.Device
                 };
                 var response = _Client.IndexDocument(profile);
                 return profile;

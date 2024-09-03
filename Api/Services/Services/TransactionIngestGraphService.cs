@@ -64,7 +64,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         return _Client;
 
     }
-    [Queue("ingestqueue")]
+    [Queue("graphingestqueue")]
     public async Task<bool> IngestTransactionInGraph(TransactionIngestData data)
     {
         try

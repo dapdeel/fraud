@@ -52,6 +52,8 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         return response;
     }
 
+
+
     public TransactionGraphDetails GetTransactionAsync(int ObservatoryId, string TransactionId)
     {
 
@@ -255,95 +257,6 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
 
 
-
-    /* public List<TransactionGraphEdgeDetails> Trace(DateTime date, string accountNumber, string bankCode, string countryCode)
-     {
-         var bank = _context.Banks.First(b => b.Code == bankCode && b.Country == countryCode);
-         var validObservatories = _context.Observatories
-             .Where(o => o.ObservatoryType == ObservatoryType.Swtich || (o.ObservatoryType == ObservatoryType.Bank && o.BankId == bank.Id))
-             .ToList();
-
-         var data = new List<TransactionGraphEdgeDetails>();
-
-         foreach (var observatory in validObservatories)
-         {
-             ElasticClient elasticClient = observatory.UseDefault ?
-                 _elasticSearchService.connect() :
-                 _elasticSearchService.connect(observatory.ElasticSearchHost);
-
-             var searchResponse = elasticClient.Search<TransactionDocument>(s => s
-                 .Query(q => q
-                     .Bool(b => b
-                         .Filter(f => f
-                             .Term(t => t.Field("observatoryId").Value(observatory.Id))
-                             && f.DateRange(dr => dr
-                                 .Field("transactionDate")
-                                 .GreaterThanOrEquals(date)
-                             )
-                             && f.Term(t => t.Field("accountNumber.keyword").Value(accountNumber))
-                             && f.Term(t => t.Field("bankCode.keyword").Value(bankCode))
-                             && f.Term(t => t.Field("country.keyword").Value(countryCode))
-                         )
-                     )
-                 )
-             );
-
-             if (!searchResponse.IsValid || searchResponse.Documents.Count == 0)
-             {
-                 continue;
-             }
-
-             // Connect to the graph database
-             var connected = connect(observatory.Id);
-             if (!connected || _connector == null)
-             {
-                 throw new ValidateErrorException("Unable to Connect to Graph Transaction");
-             }
-
-             var g = _connector.traversal();
-
-             foreach (var document in searchResponse.Documents)
-             {
-                 var platformId = document.PlatformId;
-
-                 var transactionNode = g.V()
-                     .HasLabel(JanusService.TransactionNode)
-                     .Has("PlatformId", platformId)
-                     .Id();
-
-                 if (!transactionNode.HasNext())
-                 {
-                     continue;
-                 }
-
-                 var nodeId = transactionNode.Next();
-                 var nodeDetails = g.V(nodeId).ValueMap<dynamic, dynamic>().Next();
-
-                 IList<IDictionary<string, object>> edges = g.V(nodeId).BothE().ToList().Select(edge =>
-      (IDictionary<string, object>)new Dictionary<string, object>
-      {
-             {"id", edge.Id.ToString()},
-             {"label", edge.Label},
-             {"properties", edge.Properties.ToDictionary(p => p.Key, p => (object)p.Value)}
-      }
-  ).ToList();
-
-
-                 var response = new TransactionGraphEdgeDetails
-                 {
-                     Edges = edges,
-                     Node = nodeDetails
-                 };
-
-                 data.Add(response);
-             }
-         }
-
-         return data;
-     }*/
-
-
-
     private bool connect(int ObservatoryId)
     {
         try
@@ -389,42 +302,105 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         return response;
     }
 
-    public List<TransactionGraphDetails> GetTransactions(int ObservatoryId, DateTime TransactionDate, int pageNumber, int batch)
+
+    public List<TransactionGraphDetails> GetTransactions(int observatoryId, DateTime transactionDate, int pageNumber, int batch)
     {
-        var connected = connect();
-        if (!connected || _connector == null)
-        {
-            throw new ValidateErrorException("Unable to Connect to Graph Transaction");
-        }
-        var g = _connector.traversal();
+        var elasticClient = _elasticSearchService.connect();
         int from = pageNumber * batch;
-        var Transactions = g.V().HasLabel(JanusService.TransactionNode)
-            .Has("ObservatoryId", ObservatoryId).Has("TransactionDate", P.Gte(TransactionDate))
-            .Range<dynamic>(from, batch).ToList();
+        int size = batch;
+
+        var searchResponse = elasticClient.Search<TransactionDocument>(s => s
+            .Query(q => q
+                .Bool(b => b
+                    .Filter(f => f
+                        .Term(t => t.Field("observatoryId").Value(observatoryId))
+                        && f.DateRange(r => r
+                            .Field("transactionDate")
+                            .GreaterThanOrEquals(transactionDate)
+                        )
+                    )
+                )
+            )
+            .From(from)
+            .Size(size)
+        );
+
+        if (!searchResponse.IsValid)
+        {
+            throw new ValidateErrorException("Unable to query Elasticsearch for transactions.");
+        }
+
         var data = new List<TransactionGraphDetails>();
 
-        foreach (var vertex in Transactions)
+        foreach (var hit in searchResponse.Hits)
         {
-            var NodeDetails = g.V(vertex?.Id).ValueMap<dynamic, dynamic>().Next();
+            var nodeDetails = ConvertToDictionary(hit.Source); 
+
             var response = new TransactionGraphDetails
             {
-                Edges = null,
-                Node = NodeDetails
+                Edges = null, 
+                Node = nodeDetails
             };
+
             data.Add(response);
         }
+
         return data;
     }
 
-    public long GetTransactionCount(int ObservatoryId, DateTime TransactionDate)
+    private IDictionary<dynamic, dynamic> ConvertToDictionary(TransactionDocument document)
     {
-        var connected = connect();
-        if (!connected || _connector == null)
-        {
-            throw new ValidateErrorException("Unable to Connect to Graph Transaction");
-        }
-        var g = _connector.traversal();
-        var totalTransactions = g.V().HasLabel(JanusService.TransactionNode).Has("ObservatoryId", ObservatoryId).Has("TransactionDate", P.Gte(TransactionDate)).Count().Next();
-        return totalTransactions;
+        var dictionary = new Dictionary<dynamic, dynamic>();
+
+        dictionary["platformId"] = document.PlatformId;
+        dictionary["amount"] = document.Amount;
+        dictionary["description"] = document.Description;
+        dictionary["transactionType"] = document.TransactionType;
+        dictionary["indexed"] = document.Indexed;
+        dictionary["type"] = document.Type;
+        dictionary["transactionDate"] = document.TransactionDate;
+        dictionary["transactionId"] = document.TransactionId;
+        dictionary["debitAccountId"] = document.DebitAccountId;
+        dictionary["creditAccountId"] = document.CreditAccountId;
+        dictionary["observatoryId"] = document.ObservatoryId;
+        dictionary["createdAt"] = document.CreatedAt;
+        dictionary["updatedAt"] = document.UpdatedAt;
+
+        return dictionary;
     }
+
+    public long GetTransactionCount(int observatoryId, DateTime transactionDate)
+    {
+        var elasticClient = _elasticSearchService.connect();
+
+        string formattedDate = transactionDate.ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+        var searchResponse = elasticClient.Count<TransactionDocument>(s => s
+            .Query(q => q
+                .Bool(b => b
+                    .Filter(f => f
+                        .Bool(bb => bb
+                            .Must(
+                                t => t
+                                    .Term("observatoryId", observatoryId),
+                                d => d
+                                    .DateRange(r => r
+                                        .Field("transactionDate")
+                                        .GreaterThanOrEquals(formattedDate)
+                                    )
+                            )
+                        )
+                    )
+                )
+            )
+        );
+
+        if (!searchResponse.IsValid)
+        {
+            throw new ValidateErrorException("Unable to query Elasticsearch for transaction count.");
+        }
+
+        return searchResponse.Count;
+    }
+
 }

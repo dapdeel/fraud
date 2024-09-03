@@ -20,13 +20,13 @@ namespace Api.Controllers
         {
             _transactionService = transactionService;
         }
-        [HttpGet("all")]
-        public IActionResult GetTransactions(TransactionListRequest transactionRequest)
+        [HttpPost("all")]
+        public IActionResult GetTransactions([FromBody] TransactionListRequest transactionRequest)
         {
             try
             {
-                var transactions = _transactionService.GetAllTransactions(transactionRequest.ObservatoryId
-                , transactionRequest.dateTime, transactionRequest.pageNumber, transactionRequest.batchSize);
+                var transactions = _transactionService.GetAllTransactions(transactionRequest.ObservatoryId,
+                    transactionRequest.dateTime, transactionRequest.pageNumber, transactionRequest.batchSize);
                 return Ok(new ApiResponse<List<TransactionGraphDetails>>
                 {
                     Status = "success",
@@ -52,6 +52,7 @@ namespace Api.Controllers
                 });
             }
         }
+
         [HttpGet("count/{ObservatoryId}/{startDate}")]
         public  IActionResult GetTransactionsCount(int ObservatoryId, DateTime startDate)
         {

@@ -163,7 +163,7 @@ void AddServices(WebApplicationBuilder builder)
             });
     builder.Services.AddHangfireServer(options =>
     {
-        options.Queues = new[] { "ingestqueue", "default" };
+        options.Queues = new[] { "ingestqueue","graphingestqueue", "default" };
         options.WorkerCount = 50;
     });
 

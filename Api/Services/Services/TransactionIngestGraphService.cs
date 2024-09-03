@@ -253,7 +253,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             c.Query(q =>
                 q.Bool(b => b.Must(
                     sh => sh.Term(m => m.Field(f => f.Indexed).Value(false)),
-                    sh => sh.Match(m => m.Field(f => f.Type).Query("Transaction"))
+                    sh => sh.Match(m => m.Field(f => f.Document).Query(NodeData.Transaction))
                 ))
                 ));
             if (CountQuery.Count <= 0)
@@ -268,7 +268,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 c.From(from).Size(BatchSize).Query(q =>
                       q.Bool(b => b.Must(
                     sh => sh.Term(m => m.Field(f => f.Indexed).Value(false)),
-                    sh => sh.Match(m => m.Field(f => f.Type).Query("Transaction"))
+                    sh => sh.Match(m => m.Field(f => f.Document).Query(NodeData.Transaction))
                 ))
                 ));
                 if (!Response.IsValid)

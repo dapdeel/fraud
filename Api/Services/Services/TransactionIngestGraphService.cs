@@ -175,7 +175,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 Document = EdgeData.Sent,
                 From = DebitAccount.AccountId,
                 EdgeId = Guid.NewGuid().ToString(),
-                To = Transaction.TransactionId,
+                To = Transaction.PlatformId,
                 Type = DocumentType.Edge,
                 CreatedAt = DateTime.Now
             };
@@ -183,7 +183,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             var receivedDocument = new RecievedEdgeDocument
             {
                 Document = EdgeData.Received,
-                From = Transaction.TransactionId,
+                From = Transaction.PlatformId,
                 EdgeId = Guid.NewGuid().ToString(),
                 To = CreditAccount.AccountId,
                 Type = DocumentType.Edge,

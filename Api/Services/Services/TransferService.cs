@@ -65,7 +65,7 @@ public class TransferService : ITransferService
         return _Client;
 
     }
-    [Queue("ingestqueue")]
+    
     public async Task<TransactionDocument> Ingest(TransactionTransferRequest request, bool IndexToGraph = true)
     {
         ElasticClient(request.ObservatoryId);
@@ -560,7 +560,7 @@ public class TransferService : ITransferService
                     foreach (var record in records)
                     {
                         var requestRecord = MakeRequest(record);
-                        BackgroundJob.Enqueue(() => Ingest(requestRecord, true));
+                        await Ingest(requestRecord, false);
                     }
 
                     var document = _context.TransactionFileDocument.FirstOrDefault(d => d.Name == data.Name);

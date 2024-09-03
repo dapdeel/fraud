@@ -13,12 +13,12 @@ public class CustomerDocument
     public required string Type { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    // public List<Account>? Accounts { get; set; }
-    // public List<Devices>? Devices { get; set; }
+    public required string Document { get; set; }
 }
 
 public class AccountDocument
 {
+    public required string Document { get; set; }
     public required string AccountId { get; set; }
     public required string AccountNumber { get; set; }
     public int BankId { get; set; }
@@ -34,6 +34,7 @@ public class AccountDocument
 
 public class DeviceDocument
 {
+    public required string Document { get; set; }
     public string? DeviceId { get; set; }
     public required string ProfileId { get; set; }
     public DeviceType? DeviceType { get; set; }
@@ -45,5 +46,43 @@ public class DeviceDocument
     public bool Indexed { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+}
+
+public class OwnsEdgeDocument
+{
+    public required string Document { get; set; }
+    public required string EdgeId { get; set; }
+    public required string From { get; set; }
+    public required string To { get; set; }
+    public required string Type { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class TransferedEgdeDocument
+{
+    public required string From { get; set; }
+    public required string To { get; set; }
+    public required string Document { get; set; }
+    public required string EdgeId { get; set; }
+
+    public required double EMEA { get; set; }
+
+    public required DateTime LastTransactionDate { get; set; }
+    public float Weight { get; set; }
+    public int TransactionCount { get; set; }
+    public required string Type { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class UsedDeviceEdgeDocument
+{
+
+    public required string EdgeId { get; set; }
+    public required string From { get; set; }
+    public required string To { get; set; }
+    public required string Document { get; set; }
+    public required string Type { get; set; }
+     public DateTime CreatedAt { get; set; }
 
 }

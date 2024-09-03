@@ -560,7 +560,7 @@ public class TransferService : ITransferService
                     foreach (var record in records)
                     {
                         var requestRecord = MakeRequest(record);
-                        BackgroundJob.Enqueue(() => Ingest(requestRecord, false));
+                        BackgroundJob.Enqueue(() => Ingest(requestRecord, true));
                     }
 
                     var document = _context.TransactionFileDocument.FirstOrDefault(d => d.Name == data.Name);

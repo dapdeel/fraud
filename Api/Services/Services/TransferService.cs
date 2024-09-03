@@ -128,7 +128,8 @@ public class TransferService : ITransferService
         }
         catch (Exception Exception)
         {
-            throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
+            return null;
+           // throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
     private TransactionDocument? GetTransaction(string TransactionId, int observatoryId)

@@ -65,6 +65,7 @@ public class TransferService : ITransferService
         return _Client;
 
     }
+    [Queue("ingestqueue")]
     public async Task<TransactionDocument> Ingest(TransactionTransferRequest request, bool IndexToGraph = true)
     {
         ElasticClient(request.ObservatoryId);
@@ -519,47 +520,6 @@ public class TransferService : ITransferService
         return errors;
     }
 
-    /* public async Task<bool> DownloadFileAndIngest(FileData data)
-     {
-
-         var blobServiceClient = new BlobServiceClient(_blobConnectionString);
-         var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
-         BlobClient blobClient = containerClient.GetBlobClient(data.Name);
-         using (var memoryStream = new MemoryStream())
-         {
-             await blobClient.DownloadToAsync(memoryStream);
-
-             // Reset the stream position to the beginning
-             memoryStream.Position = 0;
-
-             using (var reader = new StreamReader(memoryStream))
-             using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
-             {
-                 HasHeaderRecord = true
-             }))
-             {
-                 var records = csv.GetRecords<TransactionCsvRecord>().ToList();
-
-                 // Process the CSV records
-                 foreach (var record in records)
-                 {
-                     var request = MakeRequest(record);
-                     await Ingest(request, false);
-                 }
-                 var document = _context.TransactionFileDocument.Where(d => d.Name == data.Name).FirstOrDefault();
-                 if (document == null)
-                 {
-                     throw new ValidateErrorException("Invalid Document");
-                 }
-                 document.Indexed = true;
-                 _context.Update(document);
-                 _context.SaveChanges();
-                 await _graphIngestService.RunAnalysis(data.ObservatoryId);
-             }
-         }
-         return true;
-     }*/
-
     public async Task<bool> DownloadFileAndIngest(FileData data)
     {
         var awsAccessKey = _configuration.GetValue<string>("AWS:AccessKey");
@@ -600,7 +560,7 @@ public class TransferService : ITransferService
                     foreach (var record in records)
                     {
                         var requestRecord = MakeRequest(record);
-                        await Ingest(requestRecord, false);
+                        BackgroundJob.Enqueue(() => Ingest(requestRecord, false));
                     }
 
                     var document = _context.TransactionFileDocument.FirstOrDefault(d => d.Name == data.Name);

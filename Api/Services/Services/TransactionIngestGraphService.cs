@@ -83,6 +83,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             Console.WriteLine("Help " + data.Transaction.PlatformId + " transid " + data.Transaction.TransactionId + " bool "+ debitCustomerResponse + creditCustomerResponse + accountEdgeIndexed + transactionIndexed);
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
+                var refreshResponse = _Client.Indices.Refresh("transactions");
 
                 var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                  s.Size(1).Query(q => q.Bool(b =>

@@ -86,9 +86,10 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
 
                 var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                  s.Size(1).Query(q => q.Bool(b =>
-                  b.Must(
-                    m => m.Match(ma => ma.Field(f => f.PlatformId).Query(data.Transaction.PlatformId)),
-                       m => m.Match(ma => ma.Field(f => f.Document).Query(NodeData.Transaction)))
+                    b.Filter(
+                        f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.Document).Query(NodeData.Transaction)))),
+                        f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.PlatformId).Query(data.Transaction.PlatformId))))
+                        )
                      )));
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
                 Console.WriteLine("plas" + data.Transaction.PlatformId);
@@ -105,7 +106,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            throw new ValidateErrorException("Unable to Add Transaction");
+            Console.WriteLine("exception", Exception.Message);
+            throw new ValidateErrorException("There were issues in add this index");
         }
     }
     private bool AddAccountEdge(string DebitAccountId, string CreditAccountId, DateTime TransactionDate, float Amount)

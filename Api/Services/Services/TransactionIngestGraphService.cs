@@ -99,6 +99,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                              indexed = true
                          }
                   ));
+                  Console.WriteLine("plas " + data.Transaction.PlatformId + " " + transactionDocumentQuery.Documents.First().PlatformId + " " + response.IsValid);
                 return response.IsValid;
             }
             Console.WriteLine("flas" + data.Transaction.PlatformId);

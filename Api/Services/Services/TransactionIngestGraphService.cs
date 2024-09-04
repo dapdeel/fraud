@@ -92,7 +92,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.PlatformId).Query(data.Transaction.PlatformId))))
                         )
                      )));
-                Console.WriteLine("TimedOut " + transactionDocumentQuery.TimedOut.ToString() + transactionDocumentQuery.IsValid.ToString() + transactionDocumentQuery.ToString());
+                Console.WriteLine("TOut " + transactionDocumentQuery.TimedOut.ToString() + transactionDocumentQuery.IsValid.ToString() + transactionDocumentQuery.ToString());
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
                 var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                          new

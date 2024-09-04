@@ -80,7 +80,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             {
                 var deviceIndexed = AddDevice(data.Device, data.Transaction, data.DebitCustomer);
             }
-
+            Console.WriteLine("Help " + data.Transaction.PlatformId + " transid " + data.Transaction.TransactionId + " bool "+ debitCustomerResponse + creditCustomerResponse + accountEdgeIndexed + transactionIndexed);
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
 
@@ -92,14 +92,12 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         )
                      )));
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
-                Console.WriteLine("plas " + data.Transaction.PlatformId + " " + transactionDocumentQuery.Documents.First().PlatformId);
                 var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                          new
                          {
                              indexed = true
                          }
                   ));
-                Console.WriteLine("plas " + data.Transaction.PlatformId + " " + transactionDocumentQuery.Documents.First().PlatformId + " " + response.IsValid);
                 return response.IsValid;
             }
             Console.WriteLine("flas" + data.Transaction.PlatformId);

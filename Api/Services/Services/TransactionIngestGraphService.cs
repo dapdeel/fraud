@@ -105,7 +105,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            Console.WriteLine("exception", Exception.Message);
+            Console.WriteLine("exception"  + Exception.Message);
             throw new ValidateErrorException("There were issues in add this index");
         }
     }

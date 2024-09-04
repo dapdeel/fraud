@@ -3,8 +3,7 @@ using Api.Data;
 using Api.Interfaces;
 using Api.Models;
 using Api.Services.Interfaces;
-using Gremlin.Net.Driver;
-using Gremlin.Net.Process.Traversal;
+using Gremlin.Net.Structure;
 using Nest;
 
 public class TransactionTracingGraphService : ITransactionTracingGraphService
@@ -53,57 +52,96 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
     }
 
 
-
-    public TransactionGraphDetails GetTransactionAsync(int ObservatoryId, string TransactionId)
+    public TransactionGraphDetails GetTransactionAsync(int observatoryId, string transactionId)
     {
-
         var elasticClient = _elasticSearchService.connect();
-        var searchResponse = elasticClient.Search<TransactionDocument>(s => s
-     .Query(q => q
-         .Bool(b => b
-             .Filter(f => f
-                 .Term(t => t.Field("indexed").Value(true))
-                 && f.Term(t => t.Field("observatoryId").Value(ObservatoryId))
-                 && f.Term(t => t.Field("transactionId.keyword").Value(TransactionId))
-             )
-         )
-     )
- );
 
-        if (!searchResponse.IsValid || searchResponse.Documents.Count == 0)
-        {
-            throw new ValidateErrorException("This Transaction Does not exist, Kindly try again");
-        }
-        var document = searchResponse.Documents.First();
-        var platformId = document.PlatformId;
+        var transactionResponse = elasticClient.Search<TransactionDocument>(s => s
+            .Query(q => q
+                .Bool(b => b
+                    .Must(m => m
+                        && m.Term(t => t.Field(doc => doc.Indexed).Value(true))
+                        && m.Term(t => t.Field(doc => doc.ObservatoryId).Value(observatoryId))
+                        && m.Term(t => t.Field(doc => doc.TransactionId.Suffix("keyword")).Value(transactionId))
+                    )
+                )
+            )
+        );
 
-        var connected = connect(ObservatoryId);
-        if (!connected || _connector == null)
+        if (!transactionResponse.IsValid || transactionResponse.Documents.Count == 0)
         {
-            throw new ValidateErrorException("Unable to Connect to Graph Transaction");
+            throw new ValidateErrorException("This transaction does not exist, kindly try again.");
         }
 
-        var g = _connector.traversal();
-        var transactionNode = g.V().HasLabel(JanusService.TransactionNode)
-            .Has("PlatformId", platformId)
-            .Id();
+        var transactionDocument = transactionResponse.Documents.First();
+        var creditAccountId = transactionDocument.CreditAccountId;
+        var debitAccountId = transactionDocument.DebitAccountId;
 
-        if (!transactionNode.HasNext())
-        {
-            throw new ValidateErrorException("This Transaction Does not exist, Kindly try again");
-        }
+        var accountIds = new[] { creditAccountId, debitAccountId };
+        var accountDocuments = GetAccountDocuments(accountIds, elasticClient);
 
-        var NodeId = transactionNode.Next();
-        var NodeDetails = g.V(NodeId).ValueMap<dynamic, dynamic>().Next();
-        var edges = g.V(NodeId).BothE().ToList();
+        var edges = new List<Edge>();
+
+        var nodes = CreateNodes(accountDocuments, creditAccountId, debitAccountId);
+
         var response = new TransactionGraphDetails
         {
             Edges = edges,
-            Node = NodeDetails
+            Node = nodes
         };
 
         return response;
     }
+
+    private IDictionary<dynamic, dynamic> GetAccountDocuments(string[] accountIds, IElasticClient elasticClient)
+    {
+        var accountDocuments = new Dictionary<dynamic, dynamic>();
+
+        var accountResponse = elasticClient.Search<AccountDocument>(s => s
+            .Query(q => q
+                .Bool(b => b
+                    .Must(m => m
+                        && m.Term(t => t.Field(doc => doc.Indexed).Value(true))
+                        && m.Terms(t => t.Field(doc => doc.AccountId.Suffix("keyword")).Terms(accountIds))
+                    )
+                )
+            )
+        );
+
+        if (accountResponse.IsValid)
+        {
+            foreach (var accountDocument in accountResponse.Documents)
+            {
+                accountDocuments[accountDocument.AccountId] = accountDocument;
+            }
+        }
+
+        return accountDocuments;
+    }
+
+    private IDictionary<dynamic, dynamic> CreateNodes(IDictionary<dynamic, dynamic> accountDocuments, string creditAccountId, string debitAccountId)
+    {
+        var nodes = new Dictionary<dynamic, dynamic>();
+
+        foreach (var (accountId, accountDocument) in accountDocuments)
+        {
+            var label = (accountId == creditAccountId) ? "Credit" : "Debit";
+            nodes[accountId] = new
+            {
+                ((AccountDocument)accountDocument).AccountId,
+                ((AccountDocument)accountDocument).AccountNumber,
+                ((AccountDocument)accountDocument).BankId,
+                ((AccountDocument)accountDocument).CustomerId,
+                ((AccountDocument)accountDocument).CreatedAt,
+                ((AccountDocument)accountDocument).UpdatedAt,
+                Label = label
+            };
+        }
+
+        return nodes;
+    }
+
+
 
     public TransactionGraphDetails GetNode(int ObservatoryId, int NodeId)
     {
@@ -130,125 +168,129 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
     }
 
 
-    public List<TransactionGraphEdgeDetails> Trace(DateTime Date, string AccountNumber, string BankCode, string CountryCode)
+    public List<TransactionTraceResult> Trace(DateTime date, string accountNumber, int bankId, string countryCode)
     {
-        var Bank = _context.Banks.Where(b => b.Code == BankCode && b.Country == CountryCode).First();
-        var ValidObservatories = _context.Observatories
-            .Where(o => o.ObservatoryType == ObservatoryType.Swtich || (o.ObservatoryType == ObservatoryType.Bank && o.BankId == Bank.Id))
-            .ToList();
-        var data = new List<TransactionGraphEdgeDetails>();
-        foreach (var Observatory in ValidObservatories)
+        var bank = _context.Banks
+            .FirstOrDefault(b => b.Id == bankId && b.Country == countryCode);
+
+        if (bank == null)
         {
-            var connected = connect(Observatory.Id);
-            if (!connected || _connector == null)
-            {
-                throw new ValidateErrorException("Unable to Connect to Graph Transaction");
-            }
-            var elasticClient = Observatory.UseDefault ?
-                    _elasticSearchService.connect() :
-                    _elasticSearchService.connect(Observatory.ElasticSearchHost);
-            var accountDocument = _accountService.GetByAccountNumberAndBankId(AccountNumber, Bank.Id, Observatory);
+            throw new ValidateErrorException("Invalid bank details");
+        }
+
+        var validObservatories = _context.Observatories
+            .Where(o => o.ObservatoryType == ObservatoryType.Swtich || (o.ObservatoryType == ObservatoryType.Bank && o.BankId == bank.Id))
+            .ToList();
+
+        var data = new List<TransactionTraceResult>();
+
+        foreach (var observatory in validObservatories)
+        {
+            var elasticClient = observatory.UseDefault
+                ? _elasticSearchService.connect()
+                : _elasticSearchService.connect(observatory.ElasticSearchHost);
+
+            var accountDocument = _accountService.GetByAccountNumberAndBankId(accountNumber, bank.Id, observatory);
+
             if (accountDocument == null)
             {
                 throw new ValidateErrorException("Invalid Account");
             }
 
             var searchResponse = elasticClient.Search<TransactionDocument>(s => s
-  .Query(q => q
-      .Bool(b => b
-          .Filter(f => f
-              .Bool(bb => bb
-                  .Filter(ff => ff
-                      .Bool(bbb => bbb
-                          .Should(sh => sh
-                              .Term(t => t
-                                  .Field("type.keyword")
-                                  .Value("Transaction")
-                              )
-                          )
-                          .MinimumShouldMatch(1)
-                      ),
-                      fff => fff
-                      .Bool(bbbb => bbbb
-                          .Should(sh => sh
-                              .Match(m => m
-                                  .Field("indexed")
-                                  .Query("true")
-                              )
-                          )
-                          .MinimumShouldMatch(1)
-                      ),
-                      ffff => ffff
-                      .Bool(bbbbb => bbbbb
-                          .Should(sh => sh
-                              .Term(t => t
-                                  .Field("creditAccountId.keyword")
-                                  .Value(accountDocument?.AccountId)
-                              )
-                          )
-                          .MinimumShouldMatch(1)
-                      ),
-                      ffff => ffff
-                      .Bool(bbbbb => bbbbb
-                          .Should(sh => sh
-                              .DateRange(t => t
-                                  .Field("transactionDate")
-                                  .GreaterThanOrEquals(Date)
-                              )
-                          )
-                          .MinimumShouldMatch(1)
-                      ),
-                       ffff => ffff
-                      .Bool(bbbbb => bbbbb
-                          .Should(sh => sh
-                              .Match(t => t
-                                  .Field("observatoryId")
-                                  .Query(Observatory.Id.ToString())
-                              )
-                          )
-                          .MinimumShouldMatch(1)
-                      )
-                  )
-              )
-          )
-      )
-  )
-);
+                .Query(q => q
+                    .Bool(b => b
+                        .Filter(f => f
+                            .Bool(bb => bb
+                                .Filter(ff => ff
+                                    .Bool(bbb => bbb
+                                        .Should(sh => sh
+                                            .Term(t => t
+                                                .Field("document.keyword")
+                                                .Value("Transaction")
+                                            )
+                                        )
+                                        .MinimumShouldMatch(1)
+                                    ),
+                                    fff => fff
+                                    .Bool(bbbb => bbbb
+                                        .Should(sh => sh
+                                            .Match(m => m
+                                                .Field("indexed")
+                                                .Query("true")
+                                            )
+                                        )
+                                        .MinimumShouldMatch(1)
+                                    ),
+                                    ffff => ffff
+                                    .Bool(bbbbb => bbbbb
+                                        .Should(sh => sh
+                                            .Term(t => t
+                                                .Field("creditAccountId.keyword")
+                                                .Value(accountDocument.AccountId)
+                                            )
+                                        )
+                                        .MinimumShouldMatch(1)
+                                    ),
+                                    ffff => ffff
+                                    .Bool(bbbbb => bbbbb
+                                        .Should(sh => sh
+                                            .DateRange(t => t
+                                                .Field("transactionDate")
+                                                .GreaterThanOrEquals(date)
+                                            )
+                                        )
+                                        .MinimumShouldMatch(1)
+                                    ),
+                                    ffff => ffff
+                                    .Bool(bbbbb => bbbbb
+                                        .Should(sh => sh
+                                            .Match(t => t
+                                                .Field("observatoryId")
+                                                .Query(observatory.Id.ToString())
+                                            )
+                                        )
+                                        .MinimumShouldMatch(1)
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
 
-            var transactions = searchResponse.Documents;
+            var transactions = searchResponse.Documents.ToList();
+
             if (transactions.Count <= 0)
             {
                 throw new ValidateErrorException("No Transactions found");
             }
-            var g = _connector.traversal();
-            //     var transactionNodes = g.V().HasLabel(JanusService.TransactionNode);
-            //     foreach (var transaction in transactions)
-            //     {
-            //         if (transaction.PlatformId != null)
-            //             transactionNodes = transactionNodes.Or().Has("PlatformId", transaction.PlatformId);
-            //     }
 
-            //     var result = transactionNodes.Where(__.InE("SENT").OutV().Has("AccountNumber", AccountNumber)
-            //  .Has("BankCode", BankCode).Has("Country", CountryCode))
-            //  .ToList();
             foreach (var transaction in transactions)
             {
-                var result = g.V().HasLabel(JanusService.TransactionNode).Has("PlatformId", transaction.PlatformId).Id();
-                if (!result.HasNext())
+                var response = new TransactionTraceResult
                 {
-                    continue;
-                }
-                var vertex = result.Next();
-                var NodeDetails = g.V(vertex).ValueMap<dynamic, dynamic>().Next();
-                var Edges = g.V(vertex).OutE("SENT").As("E").BothV().As("V").Select<object>("E", "V").ToList();
-                var response = new TransactionGraphEdgeDetails
-                {
-                    Edges = Edges,
-                    Node = NodeDetails
+                    Edges = new List<IDictionary<string, object>>(), 
+                    Node = new TransactionNode
+                    {
+                        PlatformId = transaction.PlatformId,
+                        Amount = transaction.Amount,
+                        Currency = transaction.Currency,
+                        Description = transaction.Description,
+                        TransactionType = transaction.TransactionType.ToString(),
+                        TransactionDate = transaction.TransactionDate,
+                        TransactionId = transaction.TransactionId,
+                        DebitAccountId = transaction.DebitAccountId,
+                        CreditAccountId = transaction.CreditAccountId,
+                        DeviceDocumentId = transaction.DeviceDocumentId,
+                        ObservatoryId = transaction.ObservatoryId,
+                        CreatedAt = transaction.CreatedAt,
+                        UpdatedAt = transaction.UpdatedAt,
+                        Document = transaction.Document
+                    }
                 };
+
                 data.Add(response);
-
-
             }
         }
 

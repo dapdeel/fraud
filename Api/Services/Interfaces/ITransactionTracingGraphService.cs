@@ -8,5 +8,5 @@ public interface ITransactionTracingGraphService
     public TransactionGraphDetails GetNode(int ObservatoryId, int NodeId);
     public List<TransactionGraphDetails> GetTransactions(int ObservatoryId, DateTime TransactionDate, int page, int batch);
      public long GetTransactionCount(int ObservatoryId, DateTime TransactionDate);
-    public List<TransactionGraphEdgeDetails> Trace(DateTime Date, string AccountNumber, string BankCode, string CountryCode);
+    public List<TransactionTraceResult> Trace(DateTime Date, string AccountNumber, int BankId, string CountryCode);
 }

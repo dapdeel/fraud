@@ -39,12 +39,12 @@ public class TransactionTracingController : ControllerBase
         }
     }
 
-    [HttpGet("Trace/{Date}/{AccountNumber}/{BankCode}/{CountryCode}")]
-    public IActionResult GetFutureTransactions(DateTime Date, string AccountNumber, string BankCode, string CountryCode)
+    [HttpGet("Trace/{Date}/{AccountNumber}/{BankId}/{CountryCode}")]
+    public IActionResult GetFutureTransactions(DateTime Date, string AccountNumber, int BankId, string CountryCode)
     {
         try
         {
-            var response = _TracingService.GetFutureTransactions(Date, AccountNumber, BankCode, CountryCode);
+            var response = _TracingService.GetFutureTransactions(Date, AccountNumber, BankId, CountryCode);
             return Ok(new ApiResponse<object>
             {
                 Status = "success",
@@ -62,6 +62,7 @@ public class TransactionTracingController : ControllerBase
             });
         }
     }
+
     [HttpGet("Account/{ObservatoryId}/{NodeId}")]
     public IActionResult GetAccountDetails(int ObservatoryId, int NodeId)
     {

@@ -164,6 +164,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                     TransactionCount = latestTransactionCount
                 }
                 ));
+                Console.WriteLine("Boss Boss");
                 return response.IsValid;
             }
         }

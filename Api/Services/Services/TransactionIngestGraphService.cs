@@ -91,15 +91,17 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                        m => m.Match(ma => ma.Field(f => f.Document).Query(NodeData.Transaction)))
                      )));
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
-
+                Console.WriteLine("plas" + data.Transaction.PlatformId);
                 var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                          new
                          {
                              Indexed = true
                          }
                   ));
+                return response.IsValid;
             }
-            return true;
+            Console.WriteLine("flas" + data.Transaction.PlatformId);
+            return false;
         }
         catch (Exception Exception)
         {
@@ -111,7 +113,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
 
-            var searchResponse = _Client.Search<TransferedEgdeDocument> (s => s.Size(1).Query(q => q.Bool(b =>
+            var searchResponse = _Client.Search<TransferedEgdeDocument>(s => s.Size(1).Query(q => q.Bool(b =>
                 b.Filter(f =>
                 f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.From).Query(DebitAccountId)))),
                 f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.To).Query(CreditAccountId)))

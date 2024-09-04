@@ -92,11 +92,11 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         )
                      )));
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
-                Console.WriteLine("plas" + data.Transaction.PlatformId);
+                Console.WriteLine("plas " + data.Transaction.PlatformId + " " + transactionDocumentQuery.Documents.First().PlatformId);
                 var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                          new
                          {
-                             Indexed = true
+                             indexed = true
                          }
                   ));
                 return response.IsValid;

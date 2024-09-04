@@ -424,7 +424,7 @@ public class TransferService : ITransferService
                     Type = DocumentType.Node,
                     Document = NodeData.Account
                 };
-                var response =_Client.IndexDocument(Account);
+                var response = _Client.IndexDocument(Account);
                 if(!response.IsValid){
                     throw new ValidateErrorException("Unable to create account");
                 }

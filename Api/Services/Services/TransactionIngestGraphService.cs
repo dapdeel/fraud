@@ -111,10 +111,12 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
 
-            var searchResponse = _Client.Search<TransferedEgdeDocument>(s => s.Size(1).Query(q => q.Bool(b => b.Must(
-                m => m.Term(t => t.Field(f => f.From).Value(DebitAccountId)),
-                m => m.Term(t => t.Field(f => f.To).Value(CreditAccountId))
-            ))));
+            var searchResponse = _Client.Search<TransferedEgdeDocument> (s => s.Size(1).Query(q => q.Bool(b =>
+                b.Filter(f =>
+                f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.From).Query(DebitAccountId)))),
+                f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.To).Query(CreditAccountId)))
+                ))
+            )));
 
             if (searchResponse.Hits.Count <= 0)
             {

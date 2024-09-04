@@ -75,7 +75,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             var creditCustomerResponse = IndexSingleCustomerAndAccount(data.CreditCustomer, data.CreditAccount);
             var accountEdgeIndexed = AddAccountEdge(data.DebitAccount.AccountId, data.CreditAccount.AccountId,
              data.Transaction.TransactionDate, data.Transaction.Amount);
-            var transactionIndexed = await AddTransaction(data.Transaction, data.DebitAccount, data.CreditAccount);
+            var transactionIndexed = AddTransaction(data.Transaction, data.DebitAccount, data.CreditAccount);
             if (data.Device != null)
             {
                 var deviceIndexed = AddDevice(data.Device, data.Transaction, data.DebitCustomer);
@@ -99,7 +99,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                              indexed = true
                          }
                   ));
-                  Console.WriteLine("plas " + data.Transaction.PlatformId + " " + transactionDocumentQuery.Documents.First().PlatformId + " " + response.IsValid);
+                Console.WriteLine("plas " + data.Transaction.PlatformId + " " + transactionDocumentQuery.Documents.First().PlatformId + " " + response.IsValid);
                 return response.IsValid;
             }
             Console.WriteLine("flas" + data.Transaction.PlatformId);
@@ -154,14 +154,14 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 var TransactionCount = searchDocument.TransactionCount;
                 var EMEA = _FrequencyCalculator.Calculate(LastEMEA, TransactionDate, LastTransactionDate);
                 var Weight = _WeightCalculator.Calculate(EMEA, Amount, LastTransactionDate);
-
+                var latestTransactionCount = TransactionCount + 1;
                 var response = _Client.Update<TransferedEgdeDocument, object>(updateDocument.Id, t => t.Doc(
                 new
                 {
                     EMEA,
                     Weight,
                     LastTransactionDate = TransactionDate,
-                    TransactionCount = TransactionCount + 1
+                    TransactionCount = latestTransactionCount
                 }
                 ));
                 return response.IsValid;
@@ -173,7 +173,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
     }
 
-    private async Task<bool> AddTransaction(TransactionDocument Transaction, AccountDocument DebitAccount, AccountDocument CreditAccount)
+    private bool AddTransaction(TransactionDocument Transaction, AccountDocument DebitAccount, AccountDocument CreditAccount)
     {
         try
         {
@@ -344,7 +344,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             var creditCustomerIndexResponse = IndexSingleCustomerAndAccount(CreditCustomerDocument, CreditAccountDocument);
             var accountEdgeIndexed = AddAccountEdge(DebitAccountDocument.AccountId, CreditAccountDocument.AccountId,
             document.TransactionDate, document.Amount);
-            var transactionIndexed = await AddTransaction(document, DebitAccountDocument, CreditAccountDocument);
+            var transactionIndexed = AddTransaction(document, DebitAccountDocument, CreditAccountDocument);
             var deviceResponse = _Client.Search<DeviceDocument>(a =>
                              a.Size(1)
                              .Query(q =>

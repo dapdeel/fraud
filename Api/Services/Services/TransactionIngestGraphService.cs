@@ -83,6 +83,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             Console.WriteLine("Help " + data.Transaction.PlatformId + " transid " + data.Transaction.TransactionId + " bool "+ debitCustomerResponse + creditCustomerResponse + accountEdgeIndexed + transactionIndexed);
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
+                var refreshResponse = _Client.Indices.Refresh("transactions");
 
                 var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                  s.Size(1).Query(q => q.Bool(b =>
@@ -91,7 +92,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.PlatformId).Query(data.Transaction.PlatformId))))
                         )
                      )));
-                Console.WriteLine("TimedOut " + transactionDocumentQuery.TimedOut + transactionDocumentQuery.IsValid + transactionDocumentQuery.ToString());
+                Console.WriteLine("TimedOut " + transactionDocumentQuery.TimedOut.ToString() + transactionDocumentQuery.IsValid.ToString() + transactionDocumentQuery.ToString());
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
                 var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                          new
@@ -106,7 +107,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            Console.WriteLine("exception"  + Exception.Message);
+            Console.WriteLine("lasaexception"  + Exception.Message);
             throw new ValidateErrorException("There were issues in add this index");
         }
     }

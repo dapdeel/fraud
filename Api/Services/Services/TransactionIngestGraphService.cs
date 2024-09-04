@@ -80,7 +80,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             {
                 var deviceIndexed = AddDevice(data.Device, data.Transaction, data.DebitCustomer);
             }
-            Console.WriteLine("Help " + data.Transaction.PlatformId + " transid " + data.Transaction.TransactionId + " bool "+ debitCustomerResponse + creditCustomerResponse + accountEdgeIndexed + transactionIndexed);
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
                 var refreshResponse = _Client.Indices.Refresh("transactions");
@@ -92,24 +91,53 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.PlatformId).Query(data.Transaction.PlatformId))))
                         )
                      )));
-                Console.WriteLine("TOut " + transactionDocumentQuery.TimedOut.ToString() + transactionDocumentQuery.IsValid.ToString() + transactionDocumentQuery.ToString());
-                var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
-                var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
-                         new
-                         {
-                             indexed = true
-                         }
-                  ));
-                return response.IsValid;
+                var transactionUpdateDocument = transactionDocumentQuery.Hits.FirstOrDefault();
+                if (transactionUpdateDocument == null)
+                {
+                    BackgroundJob.Schedule(() => UpdateIndexedTransaction(data.Transaction.PlatformId), TimeSpan.FromMinutes(5));
+                }
+                else
+                {
+                    var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
+                             new
+                             {
+                                 indexed = true
+                             }
+                      ));
+                    return response.IsValid;
+                }
             }
-            Console.WriteLine("flas" + data.Transaction.PlatformId);
             return false;
         }
         catch (Exception Exception)
         {
-            Console.WriteLine("lasaexception"  + Exception.Message);
+            Console.WriteLine("lasaexception" + Exception.Message);
             throw new ValidateErrorException("There were issues in add this index");
         }
+    }
+
+    [Queue("graphTransactionUpdateQueue")]
+    public bool UpdateIndexedTransaction(string PlatformId)
+    {
+        var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
+                        s.Size(1).Query(q => q.Bool(b =>
+                           b.Filter(
+                               f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.Document).Query(NodeData.Transaction)))),
+                               f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.PlatformId).Query(PlatformId))))
+                               )
+                            )));
+        var transactionUpdateDocument = transactionDocumentQuery.Hits.FirstOrDefault();
+        if (transactionUpdateDocument == null)
+        {
+            return false;
+        }
+        var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
+                            new
+                            {
+                                indexed = true
+                            }
+                     ));
+        return response.IsValid;
     }
     private bool AddAccountEdge(string DebitAccountId, string CreditAccountId, DateTime TransactionDate, float Amount)
     {

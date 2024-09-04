@@ -29,7 +29,7 @@ public class AccountService : IAccountService
                          .Bool(bbb => bbb
                              .Should(sh => sh
                                  .Term(t => t
-                                     .Field("type.keyword")
+                                     .Field("document.keyword")
                                      .Value("Account")
                                  )
                              )

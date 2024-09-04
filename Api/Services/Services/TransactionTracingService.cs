@@ -97,9 +97,9 @@ namespace Api.Services.TransactionTracing
                 .ToListAsync();
         }
 
-        public List<TransactionGraphEdgeDetails> GetFutureTransactions(DateTime Date, string AccountNumber, string BankCode, string Country)
+        public List<TransactionTraceResult> GetFutureTransactions(DateTime Date, string AccountNumber, int BankId, string Country)
         {
-            var responses = _transactionTracingGraphService.Trace(Date: Date, AccountNumber: AccountNumber, BankCode: BankCode, CountryCode: Country);
+            var responses = _transactionTracingGraphService.Trace(Date: Date, AccountNumber: AccountNumber, BankId: BankId, CountryCode: Country);
             return responses;
         }
 

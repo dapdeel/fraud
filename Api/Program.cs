@@ -138,8 +138,11 @@ app.UseAuthentication();
 app.UseCors("AllowAllOrigins");
 app.UseAuthorization();
 app.MapControllers();
-
+RecurringJob.AddOrUpdate<ITransactionIngestGraphService>(x =>
+     x.IndexPendingTransactions(), Cron.Daily);
 app.Run();
+
+
 
 void AddServices(WebApplicationBuilder builder)
 {
@@ -154,7 +157,7 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddHostedService<FileReaderConsumerService>();
     builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
     builder.Services.AddTransient<ITransactionIngestGraphService, TransactionIngestGraphService>();
-    builder.Services.AddScoped<IAccountService,AccountService>();
+    builder.Services.AddScoped<IAccountService, AccountService>();
     builder.Services.AddScoped<ITransactionTracingGraphService, TransactionTracingGraphService>();
     builder.Services.AddScoped<IElasticSearchService, ElasticSearchService>();
     builder.Services.AddHangfire(config =>
@@ -163,8 +166,8 @@ void AddServices(WebApplicationBuilder builder)
             });
     builder.Services.AddHangfireServer(options =>
     {
-        options.Queues = new[] { "ingestqueue","graphingestqueue", "graphTransactionUpdateQueue","default" };
+        options.Queues = new[] { "ingestqueue", "graphingestqueue", "graphTransactionUpdateQueue", "default" };
         options.WorkerCount = 50;
     });
-
+ 
 }

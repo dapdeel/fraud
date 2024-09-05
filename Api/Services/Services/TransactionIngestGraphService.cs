@@ -92,9 +92,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         )
                      )));
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.FirstOrDefault();
-                if (transactionUpdateDocument == null)
+                if (transactionDocumentQuery.Hits.Count <= 0)
                 {
-                    Console.WriteLine("I am here");
                     BackgroundJob.Enqueue(() => UpdateIndexedTransaction(data.ObservatoryId, data.Transaction.PlatformId));
                 }
                 else
@@ -113,7 +112,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            Console.WriteLine("lasaexception1" + Exception.InnerException);
+            Console.WriteLine("lasaexception1" + Exception.InnerException.ToString() + " " + Exception.Message);
             throw new ValidateErrorException("There were issues in add this index");
         }
     }

@@ -91,13 +91,14 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.PlatformId).Query(data.Transaction.PlatformId))))
                         )
                      )));
-                var transactionUpdateDocument = transactionDocumentQuery.Hits.FirstOrDefault();
+               
                 if (transactionDocumentQuery.Hits.Count <= 0)
                 {
                     BackgroundJob.Enqueue(() => UpdateIndexedTransaction(data.ObservatoryId, data.Transaction.PlatformId));
                 }
                 else
                 {
+                     var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
                     Console.WriteLine("IDIS" + transactionUpdateDocument.Id);
                     var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                              new

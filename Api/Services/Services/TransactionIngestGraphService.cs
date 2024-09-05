@@ -91,14 +91,14 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.PlatformId).Query(data.Transaction.PlatformId))))
                         )
                      )));
-                var transactionUpdateDocument = transactionDocumentQuery.Hits.FirstOrDefault();
-                if (transactionUpdateDocument == null)
+               
+                if (transactionDocumentQuery.Hits.Count <= 0)
                 {
-                    Console.WriteLine("I am here");
                     BackgroundJob.Enqueue(() => UpdateIndexedTransaction(data.ObservatoryId, data.Transaction.PlatformId));
                 }
                 else
                 {
+                     var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
                     Console.WriteLine("IDIS" + transactionUpdateDocument.Id);
                     var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                              new
@@ -113,7 +113,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            Console.WriteLine("lasaexception1" + Exception.InnerException);
+            Console.WriteLine("lasaexception1" + Exception.InnerException.ToString() + " " + Exception.Message);
             throw new ValidateErrorException("There were issues in add this index");
         }
     }

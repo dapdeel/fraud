@@ -111,7 +111,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            Console.WriteLine("lasaexception3" + " " + Exception.StackTrace.ToString());
+            Console.WriteLine("lasaexception4" + " " + Exception.StackTrace.ToString());
             throw new ValidateErrorException("There were issues in add this index");
         }
     }

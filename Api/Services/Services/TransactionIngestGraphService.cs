@@ -82,7 +82,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             }
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
-                var refreshResponse = _Client.Indices.Refresh("transactions");
 
                 var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                  s.Size(1).Query(q => q.Bool(b =>
@@ -99,7 +98,6 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 else
                 {
                      var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
-                    Console.WriteLine("IDIS" + transactionUpdateDocument.Id);
                     var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                              new
                              {
@@ -113,7 +111,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
-            Console.WriteLine("lasaexception2 " + " " + Exception.Message);
+            Console.WriteLine("lasaexception3" + " " + Exception.StackTrace.ToString());
             throw new ValidateErrorException("There were issues in add this index");
         }
     }

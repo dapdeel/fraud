@@ -94,7 +94,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.FirstOrDefault();
                 if (transactionUpdateDocument == null)
                 {
-                    BackgroundJob.Enqueue(() => UpdateIndexedTransaction(data.Transaction.PlatformId));
+                    BackgroundJob.Schedule(() => UpdateIndexedTransaction(data.ObservatoryId, data.Transaction.PlatformId), TimeSpan.FromSeconds(60));
                 }
                 else
                 {
@@ -116,9 +116,10 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
     }
 
-    [Queue("graphTransactionUpdateQueue")]
-    public bool UpdateIndexedTransaction(string PlatformId)
+    [Queue("graphtransactionupdatequeue")]
+    public bool UpdateIndexedTransaction(int ObservatoryId, string PlatformId)
     {
+        connect(ObservatoryId);
         var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                         s.Size(1).Query(q => q.Bool(b =>
                            b.Filter(

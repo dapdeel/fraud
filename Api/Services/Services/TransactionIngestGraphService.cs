@@ -461,7 +461,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                            f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.AccountId).Query(accountDocument.AccountId))))
                            )
                         )));
-        if(query.Hits.Count <= 0){
+        if (query.Hits.Count <= 0)
+        {
             return false;
         }
         var updateDocument = query.Hits.First();
@@ -475,13 +476,17 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     }
     private bool MarkCustomerAsIndexed(CustomerDocument customerDocument)
     {
-             var query = _Client.Search<AccountDocument>(s =>
-                    s.Size(1).Query(q => q.Bool(b =>
-                       b.Filter(
-                           f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.Document).Query(NodeData.Customer)))),
-                           f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.AccountId).Query(customerDocument.CustomerId))))
-                           )
-                        )));
+        var query = _Client.Search<CustomerDocument>(s =>
+               s.Size(1).Query(q => q.Bool(b =>
+                  b.Filter(
+                      f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.Document).Query(NodeData.Customer)))),
+                      f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.CustomerId).Query(customerDocument.CustomerId))))
+                      )
+                   )));
+        if (query.Hits.Count <= 0)
+        {
+            return false;
+        }
         var updateDocument = query.Hits.First();
         var response = _Client.Update<CustomerDocument, object>(updateDocument.Id, t => t.Doc(
                  new

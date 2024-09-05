@@ -80,6 +80,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             {
                 var deviceIndexed = AddDevice(data.Device, data.Transaction, data.DebitCustomer);
             }
+            Console.WriteLine("bamba " + data.Transaction.PlatformId + " " + debitCustomerResponse + creditCustomerResponse + accountEdgeIndexed + transactionIndexed);
             if (debitCustomerResponse && creditCustomerResponse && accountEdgeIndexed && transactionIndexed)
             {
 

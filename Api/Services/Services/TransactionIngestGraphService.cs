@@ -465,6 +465,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         )));
         if (query.Hits.Count <= 0)
         {
+             SentrySdk.CaptureMessage( "Customer " + accountDocument.AccountId);
             return false;
         }
         var updateDocument = query.Hits.First();
@@ -487,6 +488,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                    )));
         if (query.Hits.Count <= 0)
         {
+            SentrySdk.CaptureMessage( "Customer " + customerDocument.CustomerId);
             return false;
         }
         var updateDocument = query.Hits.First();

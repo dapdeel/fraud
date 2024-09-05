@@ -94,7 +94,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.FirstOrDefault();
                 if (transactionUpdateDocument == null)
                 {
-                    BackgroundJob.Schedule(() => UpdateIndexedTransaction(data.Transaction.PlatformId), TimeSpan.FromMinutes(5));
+                    BackgroundJob.Schedule(() => UpdateIndexedTransaction(data.ObservatoryId, data.Transaction.PlatformId), TimeSpan.FromSeconds(60));
                 }
                 else
                 {
@@ -116,9 +116,10 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
     }
 
-    [Queue("graphTransactionUpdateQueue")]
-    public bool UpdateIndexedTransaction(string PlatformId)
+    [Queue("graphtransactionupdatequeue")]
+    public bool UpdateIndexedTransaction(int ObservatoryId, string PlatformId)
     {
+        connect(ObservatoryId);
         var transactionDocumentQuery = _Client.Search<TransactionDocument>(s =>
                         s.Size(1).Query(q => q.Bool(b =>
                            b.Filter(
@@ -138,6 +139,48 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                             }
                      ));
         return response.IsValid;
+    }
+
+    public bool IndexPendingTransactions()
+    {
+        var observatories = _context.Observatories.Where(o => o.HasConnected == true).ToList();
+        foreach (var observatory in observatories)
+        {
+            connect(observatory.Id);
+            var searchResponse = _Client.Search<TransactionDocument>(s =>
+                           s.Size(1000).Query(q => q.Bool(b =>
+                              b.Filter(
+                                  f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.Document).Query(NodeData.Transaction)))),
+                                  f => f.Bool(b => b.Should(sh => sh.Term(m => m.Field(f => f.Indexed).Value(false)))),
+                                  f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.Type).Query(DocumentType.Node))))
+                                  )
+               )));
+            if (searchResponse.IsValid && searchResponse.Hits.Any())
+            {
+
+                foreach (var hit in searchResponse.Hits)
+                {
+                    // Update the document in Elasticsearch
+                    var updateResponse = _Client.Update<TransactionDocument, object>(hit.Id, t => t.Doc(
+                            new
+                            {
+                                indexed = true
+                            }
+                     )
+                    );
+
+                    if (updateResponse.IsValid)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
     private bool AddAccountEdge(string DebitAccountId, string CreditAccountId, DateTime TransactionDate, float Amount)
     {

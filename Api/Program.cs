@@ -15,11 +15,11 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Hangfire.Dashboard;
 using Amazon.S3;
-using Microsoft.AspNetCore.Builder;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.WebHost.UseSentry();
 
 builder.Services.Configure<FormOptions>(options =>
 {

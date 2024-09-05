@@ -70,6 +70,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         try
         {
             connect(data.ObservatoryId);
+             var refreshResponse = _Client.Indices.Refresh("transactions");
             _banks = _context.Banks.ToList();
             var debitCustomerResponse = IndexSingleCustomerAndAccount(data.DebitCustomer, data.DebitAccount);
             var creditCustomerResponse = IndexSingleCustomerAndAccount(data.CreditCustomer, data.CreditAccount);
@@ -465,7 +466,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         )));
         if (query.Hits.Count <= 0)
         {
-             SentrySdk.CaptureMessage( "Customer " + accountDocument.AccountId);
+             SentrySdk.CaptureMessage( "Account " + accountDocument.AccountId);
             return false;
         }
         var updateDocument = query.Hits.First();

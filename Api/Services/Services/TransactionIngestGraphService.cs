@@ -111,6 +111,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
         }
         catch (Exception Exception)
         {
+            SentrySdk.CaptureException(Exception);
             Console.WriteLine("lasaexception5" + " " + Exception.StackTrace.ToString());
             throw new ValidateErrorException("There were issues in add this index");
         }

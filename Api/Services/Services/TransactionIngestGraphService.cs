@@ -99,6 +99,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 }
                 else
                 {
+                    Console.WriteLine("IDIS" + transactionUpdateDocument.Id);
                     var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                              new
                              {

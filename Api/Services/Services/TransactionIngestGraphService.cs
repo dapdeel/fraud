@@ -475,12 +475,13 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     }
     private bool MarkCustomerAsIndexed(CustomerDocument customerDocument)
     {
-        var query = _Client.Search<CustomerDocument>(s =>
-                       s.Size(1).Query(q => q.Bool(b =>
-                        b.Must(
-                          m => m.Match(ma => ma.Field(f => f.CustomerId).Query(customerDocument.CustomerId)),
-                             m => m.Match(ma => ma.Field(f => f.Document).Query(NodeData.Customer)))
-                           )));
+             var query = _Client.Search<AccountDocument>(s =>
+                    s.Size(1).Query(q => q.Bool(b =>
+                       b.Filter(
+                           f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.Document).Query(NodeData.Customer)))),
+                           f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.AccountId).Query(customerDocument.CustomerId))))
+                           )
+                        )));
         var updateDocument = query.Hits.First();
         var response = _Client.Update<CustomerDocument, object>(updateDocument.Id, t => t.Doc(
                  new

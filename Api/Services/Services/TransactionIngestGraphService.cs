@@ -94,7 +94,8 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                 var transactionUpdateDocument = transactionDocumentQuery.Hits.FirstOrDefault();
                 if (transactionUpdateDocument == null)
                 {
-                    BackgroundJob.Schedule(() => UpdateIndexedTransaction(data.ObservatoryId, data.Transaction.PlatformId), TimeSpan.FromSeconds(60));
+                    Console.WriteLine("I am here");
+                    BackgroundJob.Enqueue(() => UpdateIndexedTransaction(data.ObservatoryId, data.Transaction.PlatformId));
                 }
                 else
                 {

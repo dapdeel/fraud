@@ -90,14 +90,14 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                         f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.PlatformId).Query(data.Transaction.PlatformId))))
                         )
                      )));
-               
+
                 if (transactionDocumentQuery.Hits.Count <= 0)
                 {
                     BackgroundJob.Enqueue(() => UpdateIndexedTransaction(data.ObservatoryId, data.Transaction.PlatformId));
                 }
                 else
                 {
-                     var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
+                    var transactionUpdateDocument = transactionDocumentQuery.Hits.First();
                     var response = _Client.Update<TransactionDocument, object>(transactionUpdateDocument.Id, t => t.Doc(
                              new
                              {
@@ -453,12 +453,17 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     }
     private bool MarkAccountAsIndexed(AccountDocument accountDocument)
     {
+
         var query = _Client.Search<AccountDocument>(s =>
-                       s.Size(1).Query(q => q.Bool(b =>
-                        b.Must(
-                          m => m.Match(ma => ma.Field(f => f.AccountId).Query(accountDocument.AccountId)),
-                             m => m.Match(ma => ma.Field(f => f.Document).Query(NodeData.Account)))
-                           )));
+                    s.Size(1).Query(q => q.Bool(b =>
+                       b.Filter(
+                           f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.Document).Query(NodeData.Account)))),
+                           f => f.Bool(b => b.Should(sh => sh.MatchPhrase(m => m.Field(f => f.AccountId).Query(accountDocument.AccountId))))
+                           )
+                        )));
+        if(query.Hits.Count <= 0){
+            return false;
+        }
         var updateDocument = query.Hits.First();
         var response = _Client.Update<AccountDocument, object>(updateDocument.Id, t => t.Doc(
                  new
@@ -523,9 +528,9 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             CreatedAt = DateTime.Now
         };
         var response = _Client.IndexDocument(Document);
-        MarkCustomerAsIndexed(customerDocument);
-        MarkAccountAsIndexed(accountDocument);
-        return response.IsValid;
+        var customerIndexed = MarkCustomerAsIndexed(customerDocument);
+        var accountIndexed = MarkAccountAsIndexed(accountDocument);
+        return response.IsValid && customerIndexed && accountIndexed;
     }
     public async Task<bool> RunAnalysis(int ObservatoryId)
     {

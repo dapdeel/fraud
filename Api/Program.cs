@@ -15,6 +15,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Hangfire.Dashboard;
 using Amazon.S3;
+using Api.Services.Services;
 
 
 
@@ -133,6 +134,11 @@ app.UseHangfireDashboard("/jobs", new DashboardOptions
 {
     Authorization = new[] { new UseHangfireDashboardFilter() } // Allow everyone to access
 });
+
+
+var consumerService = app.Services.GetRequiredService<IngestConsumerService>();
+Task.Run(() => consumerService.StartIngestConsuming());
+
 
 app.UseAuthentication();
 app.UseCors("AllowAllOrigins");

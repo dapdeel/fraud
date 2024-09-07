@@ -15,6 +15,8 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Hangfire.Dashboard;
 using Amazon.S3;
+using Api.Services.Consumers;
+
 
 
 
@@ -53,7 +55,7 @@ builder.Services.AddCors(options =>
        options.AddPolicy("AllowAllOrigins",
            builder =>
            {
-               builder.AllowAnyOrigin() // Replace with your specific origin
+               builder.AllowAnyOrigin() 
                       .AllowAnyHeader()
                       .AllowAnyMethod();
            });
@@ -134,6 +136,11 @@ app.UseHangfireDashboard("/jobs", new DashboardOptions
     Authorization = new[] { new UseHangfireDashboardFilter() } // Allow everyone to access
 });
 
+
+var consumerService = app.Services.GetRequiredService<IngestConsumerService>();
+Task.Run(() => consumerService.StartIngestConsuming());
+
+
 app.UseAuthentication();
 app.UseCors("AllowAllOrigins");
 app.UseAuthorization();
@@ -160,6 +167,9 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddScoped<IAccountService, AccountService>();
     builder.Services.AddScoped<ITransactionTracingGraphService, TransactionTracingGraphService>();
     builder.Services.AddScoped<IElasticSearchService, ElasticSearchService>();
+    builder.Services.AddSingleton<IngestConsumerService>();
+    builder.Services.AddLogging();
+
     builder.Services.AddHangfire(config =>
             {
                 config.UsePostgreSqlStorage(builder.Configuration.GetConnectionString("DefaultConnection"));

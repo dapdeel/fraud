@@ -177,7 +177,8 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
- 
+
+
     public async Task<string> UploadAndIngest(int ObservatoryId, IFormFile file)
     {
         if (file == null || file.Length == 0)
@@ -254,7 +255,7 @@ public class TransferService : ITransferService
         catch (Exception ex)
         {
             throw new ValidateErrorException($"Internal server error: {ex.Message}");
-        }
+        }   
     }
 
 
@@ -478,7 +479,8 @@ public class TransferService : ITransferService
         var awsBucketName = _configuration.GetValue<string>("AWS:BucketName");
         var awsRegion = _configuration.GetValue<string>("AWS:Region");
 
-        if (string.IsNullOrEmpty(awsAccessKey) || string.IsNullOrEmpty(awsSecretKey) || string.IsNullOrEmpty(awsBucketName) || string.IsNullOrEmpty(awsRegion))
+        if (string.IsNullOrEmpty(awsAccessKey) || string.IsNullOrEmpty(awsSecretKey) ||
+            string.IsNullOrEmpty(awsBucketName) || string.IsNullOrEmpty(awsRegion))
         {
             throw new ValidateErrorException("AWS configuration is invalid.");
         }
@@ -486,18 +488,15 @@ public class TransferService : ITransferService
         try
         {
             var s3Client = new AmazonS3Client(awsAccessKey, awsSecretKey, Amazon.RegionEndpoint.GetBySystemName(awsRegion));
-
             var request = new GetObjectRequest
             {
                 BucketName = awsBucketName,
                 Key = data.Name
             };
-
             using (var response = await s3Client.GetObjectAsync(request))
             using (var memoryStream = new MemoryStream())
             {
                 await response.ResponseStream.CopyToAsync(memoryStream);
-
                 memoryStream.Position = 0;
 
                 using (var reader = new StreamReader(memoryStream))
@@ -506,14 +505,23 @@ public class TransferService : ITransferService
                     HasHeaderRecord = true
                 }))
                 {
+               
                     var records = csv.GetRecords<TransactionCsvRecord>().ToList();
+
+                    var ingestQueueName = _configuration.GetValue<string>("IngestQueueName");
+                    if (string.IsNullOrEmpty(ingestQueueName))
+                    {
+                        throw new ValidateErrorException("Invalid Ingest Queue Name");
+                    }
+
+                    var queueService = new RabbitMqQueueService(_configuration);
 
                     foreach (var record in records)
                     {
                         var requestRecord = MakeRequest(record);
-                        await Ingest(requestRecord, false);
+                        var serializedRecord = JsonConvert.SerializeObject(requestRecord);
+                        queueService.Publish(ingestQueueName, serializedRecord);
                     }
-
                     var document = _context.TransactionFileDocument.FirstOrDefault(d => d.Name == data.Name);
                     if (document == null)
                     {
@@ -537,4 +545,5 @@ public class TransferService : ITransferService
             throw new ValidateErrorException($"Internal server error: {ex.Message}");
         }
     }
+
 }

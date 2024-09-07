@@ -177,60 +177,7 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    /*public async Task<bool> UploadAndIngest(int ObservatoryId, IFormFile file)
-    {
-        if (file == null || file.Length == 0)
-        {
-            throw new ValidateErrorException("No file was uploaded.");
-        }
-
-        if (_blobConnectionString == null || _blobContainerName == null)
-        {
-            throw new ValidateErrorException("Unable to initiate the blob");
-        }
-        try
-        {
-            var blobServiceClient = new BlobServiceClient(_blobConnectionString);
-            var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
-            await containerClient.CreateIfNotExistsAsync();
-            var blobName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-            var blobClient = containerClient.GetBlobClient(blobName);
-            using (var stream = file.OpenReadStream())
-            {
-                await blobClient.UploadAsync(stream);
-            }
-            var url = blobClient.Uri.ToString();
-            var fileRequestUrl = new FileData
-            {
-                Url = url,
-                Name = blobName,
-                ObservatoryId = ObservatoryId
-            };
-            var TransactionFileDocument = new TransactionFileDocument
-            {
-                Name = blobName,
-                Url = url,
-                ObservatoryId = ObservatoryId,
-                Indexed = false
-            };
-            _context.Add(TransactionFileDocument);
-            var requestString = JsonConvert.SerializeObject(fileRequestUrl);
-            var IngestFileQueueName = _configuration.GetValue<string>("IngestFileQueueName");
-            if (IngestFileQueueName == null)
-            {
-                throw new ValidateErrorException("Invalid Queue Name");
-            }
-            _queuePublisherService.Publish(IngestFileQueueName, requestString);
-            _context.SaveChanges();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            throw new ValidateErrorException($"Internal server error: {ex.Message}");
-        }
-    }
-*/
-
+ 
     public async Task<string> UploadAndIngest(int ObservatoryId, IFormFile file)
     {
         if (file == null || file.Length == 0)
@@ -576,8 +523,6 @@ public class TransferService : ITransferService
                     document.Indexed = true;
                     _context.Update(document);
                     _context.SaveChanges();
-
-                    await _graphIngestService.RunAnalysis(data.ObservatoryId);
                 }
             }
 

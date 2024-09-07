@@ -211,7 +211,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
                     Weight = Weight,
                     LastTransactionDate = TransactionDate,
                     TransactionCount = 1,
-                    Type = DocumentType.Node,
+                    Type = DocumentType.Edge,
                     CreatedAt = DateTime.Now
                 };
                 var response = _Client.IndexDocument(Document);

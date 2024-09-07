@@ -177,59 +177,7 @@ public class TransferService : ITransferService
             throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    /*public async Task<bool> UploadAndIngest(int ObservatoryId, IFormFile file)
-    {
-        if (file == null || file.Length == 0)
-        {
-            throw new ValidateErrorException("No file was uploaded.");
-        }
 
-        if (_blobConnectionString == null || _blobContainerName == null)
-        {
-            throw new ValidateErrorException("Unable to initiate the blob");
-        }
-        try
-        {
-            var blobServiceClient = new BlobServiceClient(_blobConnectionString);
-            var containerClient = blobServiceClient.GetBlobContainerClient(_blobContainerName);
-            await containerClient.CreateIfNotExistsAsync();
-            var blobName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-            var blobClient = containerClient.GetBlobClient(blobName);
-            using (var stream = file.OpenReadStream())
-            {
-                await blobClient.UploadAsync(stream);
-            }
-            var url = blobClient.Uri.ToString();
-            var fileRequestUrl = new FileData
-            {
-                Url = url,
-                Name = blobName,
-                ObservatoryId = ObservatoryId
-            };
-            var TransactionFileDocument = new TransactionFileDocument
-            {
-                Name = blobName,
-                Url = url,
-                ObservatoryId = ObservatoryId,
-                Indexed = false
-            };
-            _context.Add(TransactionFileDocument);
-            var requestString = JsonConvert.SerializeObject(fileRequestUrl);
-            var IngestFileQueueName = _configuration.GetValue<string>("IngestFileQueueName");
-            if (IngestFileQueueName == null)
-            {
-                throw new ValidateErrorException("Invalid Queue Name");
-            }
-            _queuePublisherService.Publish(IngestFileQueueName, requestString);
-            _context.SaveChanges();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            throw new ValidateErrorException($"Internal server error: {ex.Message}");
-        }
-    }
-*/
 
     public async Task<string> UploadAndIngest(int ObservatoryId, IFormFile file)
     {
@@ -307,7 +255,7 @@ public class TransferService : ITransferService
         catch (Exception ex)
         {
             throw new ValidateErrorException($"Internal server error: {ex.Message}");
-        }
+        }   
     }
 
 
@@ -531,7 +479,8 @@ public class TransferService : ITransferService
         var awsBucketName = _configuration.GetValue<string>("AWS:BucketName");
         var awsRegion = _configuration.GetValue<string>("AWS:Region");
 
-        if (string.IsNullOrEmpty(awsAccessKey) || string.IsNullOrEmpty(awsSecretKey) || string.IsNullOrEmpty(awsBucketName) || string.IsNullOrEmpty(awsRegion))
+        if (string.IsNullOrEmpty(awsAccessKey) || string.IsNullOrEmpty(awsSecretKey) ||
+            string.IsNullOrEmpty(awsBucketName) || string.IsNullOrEmpty(awsRegion))
         {
             throw new ValidateErrorException("AWS configuration is invalid.");
         }
@@ -539,18 +488,15 @@ public class TransferService : ITransferService
         try
         {
             var s3Client = new AmazonS3Client(awsAccessKey, awsSecretKey, Amazon.RegionEndpoint.GetBySystemName(awsRegion));
-
             var request = new GetObjectRequest
             {
                 BucketName = awsBucketName,
                 Key = data.Name
             };
-
             using (var response = await s3Client.GetObjectAsync(request))
             using (var memoryStream = new MemoryStream())
             {
                 await response.ResponseStream.CopyToAsync(memoryStream);
-
                 memoryStream.Position = 0;
 
                 using (var reader = new StreamReader(memoryStream))
@@ -559,14 +505,23 @@ public class TransferService : ITransferService
                     HasHeaderRecord = true
                 }))
                 {
+               
                     var records = csv.GetRecords<TransactionCsvRecord>().ToList();
+
+                    var ingestQueueName = _configuration.GetValue<string>("IngestQueueName");
+                    if (string.IsNullOrEmpty(ingestQueueName))
+                    {
+                        throw new ValidateErrorException("Invalid Ingest Queue Name");
+                    }
+
+                    var queueService = new RabbitMqQueueService(_configuration);
 
                     foreach (var record in records)
                     {
                         var requestRecord = MakeRequest(record);
-                        await Ingest(requestRecord, false);
+                        var serializedRecord = JsonConvert.SerializeObject(requestRecord);
+                        queueService.Publish(ingestQueueName, serializedRecord);
                     }
-
                     var document = _context.TransactionFileDocument.FirstOrDefault(d => d.Name == data.Name);
                     if (document == null)
                     {
@@ -576,8 +531,6 @@ public class TransferService : ITransferService
                     document.Indexed = true;
                     _context.Update(document);
                     _context.SaveChanges();
-
-                    await _graphIngestService.RunAnalysis(data.ObservatoryId);
                 }
             }
 
@@ -592,4 +545,5 @@ public class TransferService : ITransferService
             throw new ValidateErrorException($"Internal server error: {ex.Message}");
         }
     }
+
 }

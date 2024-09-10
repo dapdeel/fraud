@@ -87,6 +87,20 @@
             };
         }
 
+        public async Task LogoutAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                throw new ValidateErrorException("User not found");
+            }
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+
+            await _userManager.UpdateAsync(user);
+        }
+
         public async Task<AuthResponse> RefreshTokenAsync(string token, string refreshToken)
         {
             var principal = GetPrincipalFromExpiredToken(token);

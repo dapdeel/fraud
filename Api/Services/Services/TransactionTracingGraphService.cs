@@ -237,7 +237,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
                                         .Should(sh => sh
                                             .DateRange(t => t
                                                 .Field("transactionDate")
-                                                .GreaterThanOrEquals(date)
+                                                .GreaterThan(date)
                                             )
                                         )
                                         .MinimumShouldMatch(1)

@@ -22,7 +22,7 @@ public class FileReaderConsumerService : BackgroundService
         var config = new ConsumerConfig
         {
             BootstrapServers = HostName,
-            GroupId = "fraud-consumer-group",
+            GroupId = _QueueName,
             AutoOffsetReset = AutoOffsetReset.Earliest
         };
 

@@ -9,7 +9,7 @@ public class RabbitMqQueueService : IQueuePublisherService
         configuration.GetValue<string>("");
         _connectionFactory = new ConnectionFactory { HostName = configuration.GetValue<string>("RabbitMqHost") };
     }
-    public bool Publish(string queue, string Message)
+    public async Task<bool> PublishAsync(string queue, string Message)
     {
 
         using (var connection = _connectionFactory.CreateConnection())

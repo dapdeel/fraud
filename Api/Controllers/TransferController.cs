@@ -38,7 +38,7 @@ public class TransferController : ControllerBase
             var observatory = await _observatoryService.Get(request.ObservatoryId, userId);
             var requestString = JsonConvert.SerializeObject(request);
             var queueName = _configuration.GetValue<string>("IngestQueueName");
-            _queuePublisherService.Publish(queueName, requestString);
+            await _queuePublisherService.PublishAsync(queueName, requestString);
 
             return Ok(new ApiResponse<object>
             {

@@ -243,7 +243,7 @@ public class TransferService : ITransferService
                 throw new ValidateErrorException("Invalid Queue Name");
             }
 
-            _queuePublisherService.Publish(ingestFileQueueName, requestString);
+            _queuePublisherService.PublishAsync(ingestFileQueueName, requestString);
             _context.SaveChanges();
 
             return url;
@@ -514,13 +514,11 @@ public class TransferService : ITransferService
                         throw new ValidateErrorException("Invalid Ingest Queue Name");
                     }
 
-                    var queueService = new RabbitMqQueueService(_configuration);
-
                     foreach (var record in records)
                     {
                         var requestRecord = MakeRequest(record);
                         var serializedRecord = JsonConvert.SerializeObject(requestRecord);
-                        queueService.Publish(ingestQueueName, serializedRecord);
+                        await _queuePublisherService.PublishAsync(ingestQueueName, serializedRecord);
                     }
                     var document = _context.TransactionFileDocument.FirstOrDefault(d => d.Name == data.Name);
                     if (document == null)

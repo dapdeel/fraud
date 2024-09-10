@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Confluent.Kafka;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -10,51 +11,75 @@ public class TransferIngestConsumerService : BackgroundService
     private string _QueueName;
     private int _sleepTime;
     private readonly IServiceScopeFactory _scopeFactory;
+    private IConsumer<Ignore, string> _consumer;
+    private CancellationTokenSource _cts;
     public TransferIngestConsumerService(IConfiguration configuration, IServiceScopeFactory scopeFactory)
     {
         _configuration = configuration;
         _QueueName = _configuration.GetValue<string>("IngestQueueName");
-        _sleepTime = _configuration.GetValue<int>("ConsumerDelayTime");
         _scopeFactory = scopeFactory;
-        var HostName = _configuration.GetValue<string>("RabbitMqHost") ;
-        var connectionFactory = new ConnectionFactory() { HostName = HostName };
-        var connection = connectionFactory.CreateConnection();
-        _channel = connection.CreateModel();
-        _channel.BasicQos(0, 1, false);
+        var HostName = _configuration.GetValue<string>("KafkaServer");
+        var config = new ConsumerConfig
+        {
+            BootstrapServers = HostName,
+            GroupId = _QueueName,
+            AutoOffsetReset = AutoOffsetReset.Earliest
+        };
+
+        _consumer = new ConsumerBuilder<Ignore, string>(config).Build();
+        _consumer.Subscribe(_QueueName);
     }
 
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        stoppingToken.ThrowIfCancellationRequested();
-
-        _channel.QueueDeclare(queue: _QueueName,
-                     durable: false,
-                     exclusive: false,
-                     autoDelete: false,
-                     arguments: null);
-        var consumer = new EventingBasicConsumer(_channel);
-        consumer.Received += async (model, ea) =>
+        return Task.Run(() => StartConsuming(stoppingToken), stoppingToken);
+    }
+    private async void StartConsuming(CancellationToken stoppingToken)
+    {
+        try
         {
-            var body = ea.Body.ToArray();
-            var message = Encoding.UTF8.GetString(body);
-            var response = JsonSerializer.Deserialize<TransactionTransferRequest>(message);
-            if (response != null)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                using (var scope = _scopeFactory.CreateScope())
+                try
                 {
-                var transferService = scope.ServiceProvider.GetRequiredService<ITransferService>();
-                 await transferService.Ingest(response, true); // Use scoped service
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        var consumeResult = _consumer.Consume(stoppingToken);
+                        Console.WriteLine("Hi");
+                        var response = JsonSerializer.Deserialize<TransactionTransferRequest>(consumeResult.Message.Value);
+                        var transferService = scope.ServiceProvider.GetRequiredService<ITransferService>();
+                        if (response != null)
+                        {
+                            await transferService.Ingest(response, true); // Use scoped service
+                        }
+                    }
+                }
+                catch (ConsumeException ex)
+                {
+                    // _logger.LogError($"Error occurred: {ex.Error.Reason}");
                 }
             }
-
-        };
-        _channel.BasicConsume(queue: _QueueName,
-                             autoAck: true,
-                             consumer: consumer);
-
-
-
-        return Task.CompletedTask;
+        }
+        catch (OperationCanceledException Exception)
+        {
+            Console.WriteLine(Exception.Message);
+        }
+        finally
+        {
+            _consumer.Close(); // Cleanly close the consumer and commit offsets
+        }
     }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await base.StopAsync(cancellationToken);
+    }
+
+    public override void Dispose()
+    {
+        _consumer.Dispose();
+        base.Dispose();
+    }
+
 }

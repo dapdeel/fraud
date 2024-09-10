@@ -15,7 +15,6 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Hangfire.Dashboard;
 using Amazon.S3;
-using Api.Services.Consumers;
 
 
 
@@ -137,10 +136,6 @@ app.UseHangfireDashboard("/jobs", new DashboardOptions
 });
 
 
-var consumerService = app.Services.GetRequiredService<IngestConsumerService>();
-Task.Run(() => consumerService.StartIngestConsuming());
-
-
 app.UseAuthentication();
 app.UseCors("AllowAllOrigins");
 app.UseAuthorization();
@@ -159,7 +154,7 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddScoped<ITransferService, TransferService>();
     builder.Services.AddScoped<ITransactionSummaryService, TransactionSummaryService>();
     builder.Services.AddTransient<IGraphService, JanusService>();
-    builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
+    builder.Services.AddSingleton<IQueuePublisherService, KafkaProducerService>();
     builder.Services.AddHostedService<TransferIngestConsumerService>();
     builder.Services.AddHostedService<FileReaderConsumerService>();
     builder.Services.AddScoped<ITransactionTracingService, TransactionService>();
@@ -167,7 +162,6 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddScoped<IAccountService, AccountService>();
     builder.Services.AddScoped<ITransactionTracingGraphService, TransactionTracingGraphService>();
     builder.Services.AddScoped<IElasticSearchService, ElasticSearchService>();
-    builder.Services.AddSingleton<IngestConsumerService>();
     builder.Services.AddLogging();
 
     builder.Services.AddHangfire(config =>

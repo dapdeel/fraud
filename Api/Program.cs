@@ -35,7 +35,7 @@ builder.Services.AddAWSService<IAmazonS3>();
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 2L * 1024 * 1024 * 1024;
+    options.Limits.MaxRequestBodySize = 2L * 1024 * 1024 * 1024; // 2 GB
 });
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();

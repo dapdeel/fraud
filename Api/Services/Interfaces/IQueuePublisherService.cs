@@ -1,5 +1,6 @@
 public interface IQueuePublisherService
 {
-    public bool Publish(string Queue, string Message);
+    // public bool PublishAsync(string Queue, string Message);
+    public Task<bool> PublishAsync(string queue, string Message);
 
 }

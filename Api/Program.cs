@@ -159,7 +159,7 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddScoped<ITransferService, TransferService>();
     builder.Services.AddScoped<ITransactionSummaryService, TransactionSummaryService>();
     builder.Services.AddTransient<IGraphService, JanusService>();
-    builder.Services.AddSingleton<IQueuePublisherService, RabbitMqQueueService>();
+    builder.Services.AddSingleton<IQueuePublisherService, KafkaProducerService>();
     builder.Services.AddHostedService<TransferIngestConsumerService>();
     builder.Services.AddHostedService<FileReaderConsumerService>();
     builder.Services.AddScoped<ITransactionTracingService, TransactionService>();

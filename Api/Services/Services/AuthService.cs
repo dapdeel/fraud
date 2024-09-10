@@ -66,7 +66,7 @@
                 new IdentityError
                 {
                     Code = "InvalidLoginAttempt",
-                    Description = "Invalid login attempt"
+                    Description = "Invalid login credentials"
                 }
             };
                 return new AuthResponse { Success = false, Errors = errors };

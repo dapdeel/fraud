@@ -1,4 +1,5 @@
-﻿using Api.DTOs;
+﻿using Api.CustomException;
+using Api.DTOs;
 using Api.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
@@ -84,6 +85,49 @@ namespace Api.Controllers
                 });
             }
         }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout(LogoutDTO model)
+        {
+            try
+            {
+                await _authService.LogoutAsync(model.UserId); 
+
+                return Ok(new ApiResponse<object>
+                {
+                    Status = "success",
+                    Message = "Logout successful",
+                    Data = null
+                });
+            }
+            catch (ValidateErrorException ex) 
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Status = "error",
+                    Message = "Logout failed",
+                    Error = new ApiError
+                    {
+                        Code = "LOGOUT_FAILED",
+                        Details = ex.Message
+                    }
+                });
+            }
+            catch (Exception ex) 
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Status = "error",
+                    Message = "An error occurred during logout",
+                    Error = new ApiError
+                    {
+                        Code = "LOGOUT_FAILED",
+                        Details = ex.Message
+                    }
+                });
+            }
+        }
+
 
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken(TokenRequestDTO tokenRequest)

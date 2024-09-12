@@ -16,6 +16,7 @@ namespace Api.Services.Interfaces
         Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId);
         Task<List<Observatory>> GetObservatoriesByUserId( string userId);
         Task<List<Observatory>> GetInvitedObservatoriesByUserId(string userId);
-
+        Task<Observatory> SwitchCurrentObservatory(string userId, int observatoryId);
+        Task<Observatory?> GetCurrentObservatory(string userId);
     }
 }

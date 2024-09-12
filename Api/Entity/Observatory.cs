@@ -42,6 +42,13 @@ public class Observatory
 
 }
 
+public class SwitchRequest
+{
+    public string UserId { get; set; }
+    public int ObservatoryId { get; set; }
+}
+
+
 public enum ObservatoryType
 {
     Swtich,

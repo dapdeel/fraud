@@ -256,4 +256,98 @@ public class ObservatoryController : ControllerBase
             });
         }
     }
+    [HttpPost("Switch")]
+    public async Task<IActionResult> Switch([FromBody] SwitchRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.UserId) || request.ObservatoryId <= 0)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Message = "UserId and ObservatoryId are required"
+                });
+            }
+
+            var observatory = await _service.SwitchCurrentObservatory(request.UserId, request.ObservatoryId);
+
+            return Ok(new ApiResponse<Observatory>
+            {
+                Status = "success",
+                Message = "Observatory switched successfully",
+                Data = observatory 
+            });
+        }
+        catch (ValidateErrorException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ApiResponse<dynamic>
+            {
+                Status = "error",
+                Message = "An unexpected error occurred",
+                Error = new ApiError { Code = "", Details = ex.Message }
+            });
+        }
+    }
+
+
+
+    [HttpGet("Current")]
+    public async Task<IActionResult> GetCurrent([FromQuery] string userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Message = "UserId is required"
+                });
+            }
+            var currentObservatory = await _service.GetCurrentObservatory(userId);
+
+            if (currentObservatory == null)
+            {
+                return NotFound(new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "Current observatory not found"
+                });
+            }
+
+            return Ok(new ApiResponse<dynamic>
+            {
+                Status = "success",
+                Data = currentObservatory
+            });
+        }
+        catch (ValidateErrorException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ApiResponse<dynamic>
+            {
+                Status = "error",
+                Message = "An unexpected error occurred",
+                Error = new ApiError { Code = "", Details = ex.Message }
+            });
+        }
+    }
 }

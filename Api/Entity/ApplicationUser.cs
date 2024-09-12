@@ -11,5 +11,6 @@
         public DateTime? RefreshTokenExpiryTime { get; set; }
         public ICollection<Observatory> Observatories { get; } = [];
         public ICollection<UserObservatory> UserObservatories { get; } = [];
+        public int? CurrentObservatoryId { get; set; }
     }
 }

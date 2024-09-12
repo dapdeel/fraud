@@ -7,6 +7,7 @@ using Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Api.Interfaces;
+using Microsoft.AspNetCore.Identity;
 public class ObservatoryService : IObservatoryService
 {
     private readonly ApplicationDbContext _context;
@@ -258,6 +259,56 @@ public class ObservatoryService : IObservatoryService
             throw new ValidateErrorException("User is already invited to the observatory.");
         }
     }
+
+
+    public async Task<Observatory> SwitchCurrentObservatory(string userId, int observatoryId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            throw new ValidateErrorException("Could not find user");
+        }
+
+        var observatory = await _context.Observatories.FindAsync(observatoryId);
+        if (observatory == null)
+        {
+            throw new ValidateErrorException("Observatory not found");
+        }
+
+        var userObservatory = await _context.UserObservatories
+            .FirstOrDefaultAsync(uo => uo.UserId == userId && uo.ObservatoryId == observatoryId);
+        if (userObservatory == null)
+        {
+            throw new ValidateErrorException("User is not associated with this observatory");
+        }
+
+        user.CurrentObservatoryId = observatoryId;
+        await _context.SaveChangesAsync();
+
+        return observatory; 
+    }
+
+
+
+
+    public async Task<Observatory?> GetCurrentObservatory(string userId)
+    {
+
+        var user = await _context.Users.FindAsync(userId);
+
+        if (user == null || user.CurrentObservatoryId == null)
+        {
+            throw new ValidateErrorException("User or current observatory not found");
+        }
+
+        var observatory = await _context.Observatories
+            .FirstOrDefaultAsync(o => o.Id == user.CurrentObservatoryId);
+
+        return observatory;
+    }
+
+
+
 
 
 }

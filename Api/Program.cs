@@ -54,7 +54,7 @@ builder.Services.AddCors(options =>
        options.AddPolicy("AllowAllOrigins",
            builder =>
            {
-               builder.AllowAnyOrigin() 
+               builder.AllowAnyOrigin()
                       .AllowAnyHeader()
                       .AllowAnyMethod();
            });
@@ -142,6 +142,8 @@ app.UseAuthorization();
 app.MapControllers();
 RecurringJob.AddOrUpdate<ITransactionIngestGraphService>(x =>
      x.IndexPendingTransactions(), Cron.Daily);
+RecurringJob.AddOrUpdate<ITransferService>(x =>
+x.CompleteIngestion(), Cron.Daily);
 app.Run();
 
 
@@ -173,5 +175,5 @@ void AddServices(WebApplicationBuilder builder)
         options.Queues = new[] { "ingestqueue", "graphingestqueue", "graphtransactionupdatequeue", "default" };
         options.WorkerCount = 50;
     });
- 
+
 }

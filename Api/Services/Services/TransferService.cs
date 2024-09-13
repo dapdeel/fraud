@@ -28,6 +28,7 @@ public class TransferService : ITransferService
     private IConfiguration _configuration;
     private IElasticSearchService _ElasticSearchService;
     private ITransactionIngestGraphService _graphIngestService;
+    private int maxSizeInBytes = 50 * 104 * 1024;
     private ElasticClient _Client;
 
     public TransferService(IGraphService graphService, ApplicationDbContext context,
@@ -42,6 +43,7 @@ public class TransferService : ITransferService
         _queuePublisherService = queuePublisherService;
         _ElasticSearchService = ElasticSearchService;
         _blobConnectionString = _configuration.GetSection("AzureBlobStorage:ConnectionString").Value;
+
         _blobContainerName = _configuration.GetSection("AzureBlobStorage:ContainerName").Value;
     }
     private ElasticClient ElasticClient(int ObservatoryId, bool Refresh = false)
@@ -65,7 +67,7 @@ public class TransferService : ITransferService
         return _Client;
 
     }
-    
+
     public async Task<TransactionDocument> Ingest(TransactionTransferRequest request, bool IndexToGraph = true)
     {
         ElasticClient(request.ObservatoryId);
@@ -129,7 +131,7 @@ public class TransferService : ITransferService
         catch (Exception Exception)
         {
             return null;
-           // throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
+            // throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
     private TransactionDocument? GetTransaction(string TransactionId, int observatoryId)
@@ -178,12 +180,15 @@ public class TransferService : ITransferService
         }
     }
 
-
     public async Task<string> UploadAndIngest(int ObservatoryId, IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
             throw new ValidateErrorException("No file was uploaded.");
+        }
+        if (file.Length > maxSizeInBytes)
+        {
+            throw new ValidateErrorException("The File Size is too much, Max of 50MB is Accepted");
         }
 
         var awsAccessKey = _configuration.GetValue<string>("AWS:AccessKey");
@@ -226,7 +231,7 @@ public class TransferService : ITransferService
                 ObservatoryId = ObservatoryId
             };
 
-            var transactionFileDocument = new TransactionFileDocument
+            var transactionFileDocument = new Api.Models.TransactionFileDocument
             {
                 Name = fileName,
                 Url = url,
@@ -255,7 +260,7 @@ public class TransferService : ITransferService
         catch (Exception ex)
         {
             throw new ValidateErrorException($"Internal server error: {ex.Message}");
-        }   
+        }
     }
 
 
@@ -373,7 +378,8 @@ public class TransferService : ITransferService
                     Document = NodeData.Account
                 };
                 var response = _Client.IndexDocument(Account);
-                if(!response.IsValid){
+                if (!response.IsValid)
+                {
                     throw new ValidateErrorException("Unable to create account");
                 }
                 return Account;
@@ -505,7 +511,7 @@ public class TransferService : ITransferService
                     HasHeaderRecord = true
                 }))
                 {
-               
+
                     var records = csv.GetRecords<TransactionCsvRecord>().ToList();
 
                     var ingestQueueName = _configuration.GetValue<string>("IngestQueueName");
@@ -544,4 +550,19 @@ public class TransferService : ITransferService
         }
     }
 
+    public async Task<bool> CompleteIngestion()
+    {
+        var documents = _context.TransactionFileDocument.Where(d => d.Indexed == false).ToList();
+        foreach (var document in documents)
+        {
+            var data = new FileData
+            {
+                Name = document.Name,
+                Url = document.Url,
+                ObservatoryId = document.ObservatoryId
+            };
+            await DownloadFileAndIngest(data);
+        }
+        return false;
+    }
 }

@@ -84,12 +84,15 @@ public class TransferController : ControllerBase
         }
     }
 
-    [HttpPost("UploadAndIngest/{Id}")]
-    public async Task<IActionResult> UploadIngest(int ObservatoryId, IFormFile file)
+    [HttpPost("UploadAndIngest")]
+    public async Task<IActionResult> UploadIngest([FromForm] UploadIngestRequest request, [FromForm] IFormFile file)
     {
         try
         {
-            var response = await _service.UploadAndIngest(ObservatoryId, file);
+            if(request.ObservatoryId <= 0){
+                throw new ValidateErrorException("Invalid ObservatoryId");
+            }
+            var response = await _service.UploadAndIngest(request.ObservatoryId, file);
 
             return Ok(new ApiResponse<object>
             {

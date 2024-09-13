@@ -28,7 +28,7 @@ public class TransferService : ITransferService
     private IConfiguration _configuration;
     private IElasticSearchService _ElasticSearchService;
     private ITransactionIngestGraphService _graphIngestService;
-    private int maxSizeInBytes = 50 * 104 * 1024;
+    private int maxSizeInBytes = 50 * 1024 * 1024;
     private ElasticClient _Client;
 
     public TransferService(IGraphService graphService, ApplicationDbContext context,

@@ -16,7 +16,7 @@ public class TransactionCustomer
     public ICollection<TransactionAccount> TransactionAccounts { get; } = [];
 
     public ICollection<TransactionProfile> TransactionProfiles { get; } = [];
-    public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } 
     public DateTime UpdatedAt { get; set; }
 
 }

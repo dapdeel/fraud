@@ -10,7 +10,7 @@ public class TransactionAccount
     public int BankId { get; set; }
     public Bank? Bank { get; } = null;
     public long CustomerId { get; set; }
-    public TransactionCustomer? TransactionCustomer { get; } = null;
+    public TransactionCustomer? TransactionCustomer { get; set; } = null;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

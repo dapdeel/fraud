@@ -15,6 +15,21 @@ public class CustomerDocument
 
     public required string Document { get; set; }
 }
+public class AccountWithDetails
+{
+    public string AccountId { get; set; }
+    public string AccountNumber { get; set; }
+    public float? AccountBalance { get; set; }
+    public string CustomerId { get; set; }
+    public string FullName { get; set; }
+    public string Email { get; set; }
+    public string Phone { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+
+
 
 public class AccountDocument
 {

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Api.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Api.Entity;
 public class ObservatoryService : IObservatoryService
 {
     private readonly ApplicationDbContext _context;
@@ -186,16 +187,17 @@ public class ObservatoryService : IObservatoryService
 
     public async Task<Observatory?> Get(int id, string userId)
     {
-        var UserObservatory = _context.UserObservatories
-        .Where(uo => uo.ObservatoryId == id && uo.UserId == userId && uo.Status == Status.Member)
-        .FirstOrDefault();
-        if (UserObservatory == null)
+        var userObservatory = _context.UserObservatories
+            .Where(uo => uo.ObservatoryId == id && uo.UserId == userId && uo.Status == Status.Member)
+            .FirstOrDefault();
+        if (userObservatory == null)
         {
             throw new ValidateErrorException("You are not a member of this observatory.");
         }
-        var Observatory = await _context.Observatories.FindAsync(id);
-        return Observatory;
-
+        var observatory = await _context.Observatories
+            .Include(o => o.TransactionRules)
+            .FirstOrDefaultAsync(o => o.Id == id);
+        return observatory;
     }
 
 
@@ -306,6 +308,73 @@ public class ObservatoryService : IObservatoryService
 
         return observatory;
     }
+
+    public async Task<TransactionRules?> GetTransactionRules(int observatoryId)
+    {
+        var observatory = await _context.Observatories
+            .Include(o => o.TransactionRules)
+            .FirstOrDefaultAsync(o => o.Id == observatoryId);
+
+        if (observatory == null)
+        {
+            throw new ValidateErrorException("Observatory not found.");
+        }
+
+        if (observatory.TransactionRules == null)
+        {
+            var defaultRules = new TransactionRules
+            {
+                ObservatoryId = observatoryId,
+                AlertFrequencyMinutes = 30,
+                RiskAppetiteAmount = 100000,
+                AllowSuspiciousAccounts = true,
+                BlockFraudulentAccounts = false,
+                AlertFraudulentAccounts = true,
+                AlertHighRiskTransactions = true
+            };
+
+            _context.TransactionRules.Add(defaultRules);
+            await _context.SaveChangesAsync();
+
+            return defaultRules;
+        }
+
+        return observatory.TransactionRules;
+    }
+
+
+    public async Task UpdateTransactionRules(int observatoryId, TransactionRules rulesDto)
+    {
+        var observatory = await _context.Observatories
+            .Include(o => o.TransactionRules)
+            .FirstOrDefaultAsync(o => o.Id == observatoryId);
+
+        if (observatory == null)
+        {
+            throw new ValidateErrorException("Observatory not found.");
+        }
+
+        var rules = observatory.TransactionRules ?? new TransactionRules { ObservatoryId = observatoryId };
+
+        rules.AlertFrequencyMinutes = rulesDto.AlertFrequencyMinutes;
+        rules.RiskAppetiteAmount = rulesDto.RiskAppetiteAmount;
+        rules.AllowSuspiciousAccounts = rulesDto.AllowSuspiciousAccounts;
+        rules.BlockFraudulentAccounts = rulesDto.BlockFraudulentAccounts;
+        rules.AlertFraudulentAccounts = rulesDto.AlertFraudulentAccounts;
+        rules.AlertHighRiskTransactions = rulesDto.AlertHighRiskTransactions;
+
+        if (observatory.TransactionRules == null)
+        {
+            _context.TransactionRules.Add(rules);
+        }
+        else
+        {
+            _context.TransactionRules.Update(rules);
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
 
 
 

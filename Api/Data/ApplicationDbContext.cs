@@ -1,5 +1,6 @@
 ﻿namespace Api.Data
 {
+    using Api.Entity;
     using Api.Models;
     using Gremlin.Net.Process.Traversal;
     using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -14,6 +15,7 @@
         }
         public DbSet<Bank> Banks { get; set; }
         public DbSet<Observatory> Observatories { get; set; }
+        public DbSet<TransactionRules> TransactionRules { get; set; }
         public DbSet<UserObservatory> UserObservatories { get; set; }
         public DbSet<TransactionCustomer> TransactionCustomers { get; set; }
         public DbSet<TransactionAccount> TransactionAccounts { get; set; }

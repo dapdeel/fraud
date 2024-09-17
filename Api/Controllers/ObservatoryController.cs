@@ -370,12 +370,11 @@ public class ObservatoryController : ControllerBase
         }
         catch (Exception ex)
         {
-            // Log the exception as needed
+           
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
 
-    // Update Transaction Rules for a given Observatory
     [HttpPut("{observatoryId}/transaction-rules")]
     public async Task<IActionResult> UpdateTransactionRules(int observatoryId, [FromBody] TransactionRules rulesDto)
     {
@@ -387,7 +386,7 @@ public class ObservatoryController : ControllerBase
         try
         {
             await _service.UpdateTransactionRules(observatoryId, rulesDto);
-            return NoContent(); // Successful update
+            return NoContent(); 
         }
         catch (ValidateErrorException ex)
         {
@@ -395,7 +394,6 @@ public class ObservatoryController : ControllerBase
         }
         catch (Exception ex)
         {
-            // Log the exception as needed
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }

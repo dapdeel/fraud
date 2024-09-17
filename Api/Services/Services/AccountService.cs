@@ -150,7 +150,8 @@ public class AccountService : IAccountService
             Email = customerDocument.Email ?? "Unknown",
             Phone = customerDocument.Phone ?? "Unknown",
             CreatedAt = accountDocument.CreatedAt,
-            UpdatedAt = accountDocument.UpdatedAt
+            UpdatedAt = accountDocument.UpdatedAt,
+            BankId = BankId
         };
     }
 

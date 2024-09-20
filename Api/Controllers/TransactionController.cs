@@ -6,6 +6,7 @@ using System;
 using Api.DTOs;
 using Api.CustomException;
 using Microsoft.AspNetCore.Authorization;
+using Api.Entity;
 
 namespace Api.Controllers
 {
@@ -15,10 +16,12 @@ namespace Api.Controllers
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionTracingService _transactionService;
+        private readonly ITransactionTracingGraphService _transactionGraphService;
 
-        public TransactionController(ITransactionTracingService transactionService)
+        public TransactionController(ITransactionTracingService transactionService, ITransactionTracingGraphService transactionGraphService)
         {
             _transactionService = transactionService;
+            _transactionGraphService = transactionGraphService;
         }
         [HttpPost("all")]
         public IActionResult GetTransactions([FromBody] TransactionListRequest transactionRequest)
@@ -284,6 +287,105 @@ namespace Api.Controllers
                 {
                     Status = "error",
                     Message = "An unexpected error occurred...",
+                    Error = new ApiError { Code = "", Details = ex.Message }
+                });
+            }
+        }
+
+        [HttpGet("transactions/daily/count")]
+        public IActionResult GetDailyTransactionCounts(int observatoryId, DateTime transactionDate)
+        {
+            try
+            {
+                var counts = _transactionGraphService.GetDailyTransactionCounts(observatoryId);
+                return Ok(new ApiResponse<List<HourlyTransactionCount>>
+                {
+                    Status = "success",
+                    Data = counts
+                });
+            }
+            catch (ValidateErrorException ex)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Error = new ApiError { Code = "", Details = ex.Message },
+                    Message = ex.Message
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "An unexpected error occurred.",
+                    Error = new ApiError { Code = "", Details = ex.Message }
+                });
+            }
+        }
+
+
+
+        [HttpGet("transactions/weekly/count")]
+        public IActionResult GetWeeklyTransactionCount(int observatoryId)
+        {
+            try
+            {
+                var counts = _transactionGraphService.GetWeekDayTransactionCounts(observatoryId);
+                return Ok(new ApiResponse<List<WeekDayTransactionCount>>
+                {
+                    Status = "success",
+                    Data = counts
+                });
+            }
+            catch (ValidateErrorException ex)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Error = new ApiError { Code = "", Details = ex.Message },
+                    Message = ex.Message
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "An unexpected error occurred.",
+                    Error = new ApiError { Code = "", Details = ex.Message }
+                });
+            }
+        }
+
+
+        [HttpGet("transactions/monthly/counts")]
+        public IActionResult GetMonthlyTransactionCounts(int observatoryId)
+        {
+            try
+            {
+                var counts = _transactionGraphService.GetMonthlyTransactionCounts(observatoryId);
+                return Ok(new ApiResponse<List<WeeklyTransactionCount>>
+                {
+                    Status = "success",
+                    Data = counts
+                });
+            }
+            catch (ValidateErrorException ex)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Error = new ApiError { Code = "", Details = ex.Message },
+                    Message = ex.Message
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "An unexpected error occurred.",
                     Error = new ApiError { Code = "", Details = ex.Message }
                 });
             }

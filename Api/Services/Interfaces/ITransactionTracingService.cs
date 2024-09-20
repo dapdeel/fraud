@@ -1,4 +1,6 @@
 ﻿
+using Api.Entity;
+
 namespace Api.Services.TransactionTracing
 {
     public interface ITransactionTracingService
@@ -15,5 +17,8 @@ namespace Api.Services.TransactionTracing
         List<TransactionTraceResult> GetFutureTransactions(DateTime Date, string AccountNumber, int BankId, string Country);
         public TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId);
         Task<List<Api.Models.Transaction>> GetTransactionsByCustomerId(string customerId); // Updated
+        public List<WeekDayTransactionCount> GetWeeklyTransactionCounts(int observatoryId);
+        public List<HourlyTransactionCount> GetDailyTransactionCounts(int observatoryId, DateTime transactionDate);
+        public List<WeeklyTransactionCount> GetMonthlyTransactionCounts(int observatoryId);
     }
 }

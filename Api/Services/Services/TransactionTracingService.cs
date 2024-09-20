@@ -1,5 +1,6 @@
 ﻿using Api.CustomException;
 using Api.Data;
+using Api.Entity;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -113,5 +114,19 @@ namespace Api.Services.TransactionTracing
            return  _transactionTracingGraphService.GetTransactionCount(ObservatoryId,dateTime);
         }
 
+        public List<HourlyTransactionCount> GetDailyTransactionCounts(int observatoryId, DateTime transactionDate)
+        {
+            return _transactionTracingGraphService.GetDailyTransactionCounts(observatoryId);
+        }
+
+        public List<WeekDayTransactionCount> GetWeeklyTransactionCounts(int observatoryId)
+        {
+            return _transactionTracingGraphService.GetWeekDayTransactionCounts(observatoryId);
+        }
+
+        public List<WeeklyTransactionCount> GetMonthlyTransactionCounts(int observatoryId)
+        {
+            return _transactionTracingGraphService.GetMonthlyTransactionCounts(observatoryId);
+        }
     }
 }

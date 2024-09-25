@@ -46,7 +46,7 @@ public class ObservatoryController : ControllerBase
         }
     }
     [HttpGet("Get/{Id}")]
-    public async Task<IActionResult> Get(int id)
+    public async Task<IActionResult> Get(string id)
     {
         try
         {

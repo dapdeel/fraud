@@ -6,5 +6,5 @@ public class TransactionFileDocument
     public required string Url { get; set; }
     public required string Name { get; set; }
     public bool Indexed { get; set; }
-    public int ObservatoryId { get; set; }
+    public string ObservatoryId { get; set; }
 }

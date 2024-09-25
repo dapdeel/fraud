@@ -8,7 +8,7 @@ namespace Api.Services.Interfaces
     public interface IObservatoryService : IBaseService
     {
         Task<Observatory?> Add(ObservatoryRequest request, string userId);
-        Task<Observatory?> Get(int id, string userId);
+        Task<Observatory?> Get(string id, string userId);
 
 
         Task AcceptInvite(int userObservatoryId, string userId);

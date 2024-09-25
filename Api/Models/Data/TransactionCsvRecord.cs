@@ -74,4 +74,7 @@ public class TransactionCsvRecord
     // ObservatoryId
     [Name("ObservatoryId")]
     public int ObservatoryId { get; set; }
+
+
+    public string ObservatoryTag { get; set; }
 }

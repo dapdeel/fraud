@@ -27,7 +27,7 @@ public class TransactionSummaryController : ControllerBase
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var observatory = await _observatoryService.Get(request.ObservatoryId, userId);
+            var observatory = await _observatoryService.Get(request.ObservatoryTag, userId);
             var response = _summaryService.GetObservatorySummary(request);
 
             return Ok(new ApiResponse<object>

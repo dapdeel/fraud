@@ -4,9 +4,13 @@ using Api.Models;
 public class TransactionTransferRequest
 {
     [Required]
-     [Range(1, int.MaxValue, ErrorMessage = "Please specify an observatory")]
+    [Range(1, int.MaxValue, ErrorMessage = "Please specify an observatory")]
     public required int ObservatoryId { get; set; }
-    
+
+    public string ObservatoryTag { get; set; }
+
+
+   
     [Required]
     public required CustomerRequest DebitCustomer { get; set; }
     [Required]

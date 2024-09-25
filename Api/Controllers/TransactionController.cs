@@ -56,6 +56,42 @@ namespace Api.Controllers
             }
         }
 
+
+        [HttpGet("{transactionId}")]
+        public IActionResult GetTransactionById(int observatoryId, string transactionId)
+        {
+            try
+            {
+                var transaction = _transactionService.GetTransactionById(observatoryId, transactionId);
+                return Ok(new ApiResponse<TransactionGraphDetails>
+                {
+                    Status = "success",
+                    Data = transaction
+                });
+            }
+            catch (ValidateErrorException ex)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Error = new ApiError { Code = "", Details = ex.Message },
+                    Message = ex.Message
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "An unexpected error occurred.",
+                    Error = new ApiError { Code = "", Details = ex.Message }
+                });
+            }
+        }
+
+
+
+
         [HttpGet("count/{ObservatoryId}/{startDate}")]
         public  IActionResult GetTransactionsCount(int ObservatoryId, DateTime startDate)
         {
@@ -219,7 +255,7 @@ namespace Api.Controllers
         }
 
 
-        [HttpGet("{transactionId}")]
+      /*  [HttpGet("{transactionId}")]
         public async Task<IActionResult> GetTransactionById(int transactionId)
         {
             try
@@ -258,7 +294,7 @@ namespace Api.Controllers
                     Error = new ApiError { Code = "", Details = ex.Message }
                 });
             }
-        }
+        }*/
 
         [HttpGet("customer/{customerId}")]
         public async Task<IActionResult> GetTransactionsByCustomerId(string customerId)

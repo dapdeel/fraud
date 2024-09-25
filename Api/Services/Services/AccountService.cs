@@ -229,5 +229,84 @@ public class AccountService : IAccountService
         return accountsWithDetails;
     }
 
+    public List<AccountRelationshipResult> GetAccountRelationshipScore(string creditAccountId, string debitAccountId)
+    {
+        var elasticClient = _elasticSearchService.connect();
+
+        // Query for credit -> debit relationship
+        var creditToDebitResponse = elasticClient.Search<TransferredEdgeDocumentDTO>(s => s
+            .Query(q => q
+                .Bool(b => b
+                    .Filter(f => f
+                        .Term(t => t.Field("type.keyword").Value("Edge"))
+                        && f.Term(t => t.Field("document.keyword").Value("Transfered"))
+                        && f.Term(t => t.Field("from.keyword").Value(creditAccountId))
+                        && f.Term(t => t.Field("to.keyword").Value(debitAccountId))
+                    )
+                )
+            )
+        );
+
+        // Query for debit -> credit relationship
+        var debitToCreditResponse = elasticClient.Search<TransferredEdgeDocumentDTO>(s => s
+            .Query(q => q
+                .Bool(b => b
+                    .Filter(f => f
+                        .Term(t => t.Field("type.keyword").Value("Edge"))
+                        && f.Term(t => t.Field("document.keyword").Value("Transfered"))
+                        && f.Term(t => t.Field("from.keyword").Value(debitAccountId))
+                        && f.Term(t => t.Field("to.keyword").Value(creditAccountId))
+                    )
+                )
+            )
+        );
+
+        // Prepare the results list
+        var results = new List<AccountRelationshipResult>();
+
+        // For credit -> debit relationship
+        var creditToDebitResult = new AccountRelationshipResult
+        {
+            RelationshipType = "credit-to-debit"  // Label the relationship type
+        };
+        if (creditToDebitResponse.Documents.Count > 0)
+        {
+            var transferedDocument = creditToDebitResponse.Documents.First();
+            creditToDebitResult.TransferredDocument = transferedDocument;
+            creditToDebitResult.RelationshipScore = transferedDocument.TransactionCount > 0
+                ? transferedDocument.EMEA / transferedDocument.TransactionCount
+                : 0;
+        }
+        else
+        {
+            creditToDebitResult.TransferredDocument = null;
+            creditToDebitResult.RelationshipScore = 0;
+        }
+        results.Add(creditToDebitResult);
+
+        // For debit -> credit relationship
+        var debitToCreditResult = new AccountRelationshipResult
+        {
+            RelationshipType = "debit-to-credit"  // Label the relationship type
+        };
+        if (debitToCreditResponse.Documents.Count > 0)
+        {
+            var transferedDocument = debitToCreditResponse.Documents.First();
+            debitToCreditResult.TransferredDocument = transferedDocument;
+            debitToCreditResult.RelationshipScore = transferedDocument.TransactionCount > 0
+                ? transferedDocument.EMEA / transferedDocument.TransactionCount
+                : 0;
+        }
+        else
+        {
+            debitToCreditResult.TransferredDocument = null;
+            debitToCreditResult.RelationshipScore = 0;
+        }
+        results.Add(debitToCreditResult);
+
+        return results;
+    }
+
+
 
 }

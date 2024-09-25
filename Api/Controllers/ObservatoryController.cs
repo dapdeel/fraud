@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Api.Models.Responses;
 using Api.Models;
+using Api.Entity;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -348,6 +349,52 @@ public class ObservatoryController : ControllerBase
                 Message = "An unexpected error occurred",
                 Error = new ApiError { Code = "", Details = ex.Message }
             });
+        }
+    }
+    [HttpGet("{observatoryId}/transaction-rules")]
+    public async Task<IActionResult> GetTransactionRules(int observatoryId)
+    {
+        try
+        {
+            var rules = await _service.GetTransactionRules(observatoryId);
+            if (rules == null)
+            {
+                return NotFound("Transaction rules not found for this observatory.");
+            }
+
+            return Ok(rules);
+        }
+        catch (ValidateErrorException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+           
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    [HttpPut("{observatoryId}/transaction-rules")]
+    public async Task<IActionResult> UpdateTransactionRules(int observatoryId, [FromBody] TransactionRules rulesDto)
+    {
+        if (rulesDto == null || observatoryId != rulesDto.ObservatoryId)
+        {
+            return BadRequest("Invalid request.");
+        }
+
+        try
+        {
+            await _service.UpdateTransactionRules(observatoryId, rulesDto);
+            return NoContent(); 
+        }
+        catch (ValidateErrorException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
 }

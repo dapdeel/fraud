@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Api.Entity;
 using Newtonsoft.Json;
 
 namespace Api.Models;
@@ -39,6 +40,7 @@ public class Observatory
     [JsonIgnore]
 
     public ICollection<UserObservatory> UserObservatories { get; } = [];
+    public TransactionRules TransactionRules { get; set; }
 
 }
 

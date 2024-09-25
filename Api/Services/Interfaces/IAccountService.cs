@@ -10,6 +10,7 @@ namespace Api.Interfaces
         AccountWithDetailsDto? GetAccountDetails(string AccountNumber, int BankId);
         List<AccountWithDetailsDto> GetAccountsByPage(int pageNumber, int batch);
         long GetAccountCount();
+        List<AccountRelationshipResult> GetAccountRelationshipScore(string creditAccountId, string debitAccountId);
 
 
 

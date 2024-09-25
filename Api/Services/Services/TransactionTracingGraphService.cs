@@ -1,5 +1,6 @@
 using Api.CustomException;
 using Api.Data;
+using Api.Entity;
 using Api.Interfaces;
 using Api.Models;
 using Api.Services.Interfaces;
@@ -76,13 +77,16 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         var transactionDocument = transactionResponse.Documents.First();
         var creditAccountId = transactionDocument.CreditAccountId;
         var debitAccountId = transactionDocument.DebitAccountId;
+        var transactionDate = transactionDocument.TransactionDate;
+        var amount = transactionDocument.Amount;
+        var description = transactionDocument.Description;
 
         var accountIds = new[] { creditAccountId, debitAccountId };
         var accountDocuments = GetAccountDocuments(accountIds, elasticClient);
 
         var edges = new List<Edge>();
 
-        var nodes = CreateNodes(accountDocuments, creditAccountId, debitAccountId);
+        var nodes = CreateNodes(accountDocuments, creditAccountId, debitAccountId,transactionDate,amount,description);
 
         var response = new TransactionGraphDetails
         {
@@ -119,7 +123,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         return accountDocuments;
     }
 
-    private IDictionary<dynamic, dynamic> CreateNodes(IDictionary<dynamic, dynamic> accountDocuments, string creditAccountId, string debitAccountId)
+    private IDictionary<dynamic, dynamic> CreateNodes(IDictionary<dynamic, dynamic> accountDocuments, string creditAccountId, string debitAccountId, DateTime transactionDate, float Amount, string description)
     {
         var nodes = new Dictionary<dynamic, dynamic>();
 
@@ -134,6 +138,9 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
                 ((AccountDocument)accountDocument).CustomerId,
                 ((AccountDocument)accountDocument).CreatedAt,
                 ((AccountDocument)accountDocument).UpdatedAt,
+                TransactionDate = transactionDate,
+                Amount= Amount,
+                Description = description,
                 Label = label
             };
         }
@@ -411,6 +418,41 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         return dictionary;
     }
 
+
+    public TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId)
+    {
+        var elasticClient = _elasticSearchService.connect();
+
+        var searchResponse = elasticClient.Search<TransactionDocument>(s => s
+            .Query(q => q
+                .Bool(b => b
+                    .Filter(f => f
+                        .Term(t => t.Field("observatoryId").Value(observatoryId))  
+                        && f.Term(t => t.Field("transactionId").Value(transactionId))  
+                    )
+                )
+            )
+            
+        );
+
+        if (!searchResponse.IsValid || !searchResponse.Hits.Any())
+        {
+            throw new ValidateErrorException($"Transaction with ID {transactionId} not found.");
+        }
+
+        var hit = searchResponse.Hits.First();
+        var nodeDetails = ConvertToDictionary(hit.Source);
+
+        var transactionDetails = new TransactionGraphDetails
+        {
+            Edges = null,  
+            Node = nodeDetails
+        };
+
+        return transactionDetails;
+    }
+
+
     public long GetTransactionCount(int observatoryId, DateTime transactionDate)
     {
         var elasticClient = _elasticSearchService.connect();
@@ -444,5 +486,189 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
         return searchResponse.Count;
     }
+
+    public List<WeekDayTransactionCount> GetWeekDayTransactionCounts(int observatoryId)
+    {
+        var elasticClient = _elasticSearchService.connect();
+
+        DateTime StartOfWeek(DateTime dt, DayOfWeek startOfWeek)
+        {
+            int diff = (7 + (dt.DayOfWeek - startOfWeek)) % 7;
+            return dt.AddDays(-1 * diff).Date;
+        }
+
+      
+        DateTime startOfWeek = StartOfWeek(DateTime.UtcNow, DayOfWeek.Sunday);
+
+ 
+        DateTime currentTime = DateTime.UtcNow;
+
+        DateTime endOfWeek = startOfWeek.AddDays(7).AddTicks(-1);
+
+        var searchResponse = elasticClient.Search<TransactionDocument>(s => s
+            .Size(0)
+            .Query(q => q
+                .Bool(b => b
+                    .Filter(f => f
+                        .Term(t => t.Field("observatoryId").Value(observatoryId)) 
+                        && f.DateRange(r => r
+                            .Field("transactionDate") 
+                            .GreaterThanOrEquals(startOfWeek)
+                            .LessThanOrEquals(endOfWeek)
+                        )
+                    )
+                )
+            )
+            .Aggregations(a => a
+                .DateHistogram("transactions_per_day", dh => dh
+                    .Field("transactionDate")
+                    .FixedInterval("1d") 
+                    .MinimumDocumentCount(0)
+                    .ExtendedBounds(startOfWeek, endOfWeek) 
+                )
+            )
+        );
+
+        if (!searchResponse.IsValid)
+        {
+            throw new ValidateErrorException("Failed to fetch transactions from Elasticsearch.");
+        }
+
+        var histogram = searchResponse.Aggregations.DateHistogram("transactions_per_day");
+
+        string[] daysOfWeek = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+
+        List<WeekDayTransactionCount> weeklyTransactionCounts = new List<WeekDayTransactionCount>();
+
+        foreach (var day in daysOfWeek)
+        {
+            weeklyTransactionCounts.Add(new WeekDayTransactionCount(day, 0));
+        }
+
+        foreach (var bucket in histogram.Buckets)
+        {
+            DateTimeOffset dayStart = DateTimeOffset.FromUnixTimeMilliseconds((long)bucket.Key).UtcDateTime;
+
+            string dayOfWeek = dayStart.DayOfWeek.ToString();
+
+            var transactionDay = weeklyTransactionCounts.FirstOrDefault(x => x.Day == dayOfWeek);
+            if (transactionDay != null)
+            {
+                transactionDay.Count = bucket.DocCount ?? 0;
+            }
+        }
+
+        return weeklyTransactionCounts;
+    }
+
+
+
+
+
+    public List<HourlyTransactionCount> GetDailyTransactionCounts(int observatoryId)
+    {
+        var elasticClient = _elasticSearchService.connect();
+
+        // DateTime startOfDay = DateTime.UtcNow.Date;
+       DateTime startOfDay = new DateTime(2024, 9, 3, 0, 0, 0, DateTimeKind.Utc);
+
+        DateTime endOfDay = startOfDay.AddDays(1).AddTicks(-1);
+
+        var searchResponse = elasticClient.Search<TransactionDocument>(s => s
+            .Size(0)
+            .Query(q => q
+                .Bool(b => b
+                    .Filter(f => f
+                        .Term(t => t.Field("observatoryId").Value(observatoryId))
+                        && f.DateRange(r => r
+                            .Field("transactionDate")
+                            .GreaterThanOrEquals(startOfDay)
+                            .LessThanOrEquals(endOfDay)
+                        )
+                    )
+                )
+            )
+            .Aggregations(a => a
+                .DateHistogram("transactions_per_hour", dh => dh
+                    .Field("transactionDate")
+                    .FixedInterval("1h")
+                    .MinimumDocumentCount(0)
+                    .ExtendedBounds(startOfDay, endOfDay)
+                )
+            )
+        );
+
+        if (!searchResponse.IsValid)
+        {
+            throw new ValidateErrorException("Failed to fetch transactions from Elasticsearch.");
+        }
+
+        var histogram = searchResponse.Aggregations.DateHistogram("transactions_per_hour");
+
+        List<HourlyTransactionCount> hourlyTransactionCounts = new List<HourlyTransactionCount>();
+
+        for (int i = 0; i < 24; i++)
+        {
+            hourlyTransactionCounts.Add(new HourlyTransactionCount(i, 0));
+        }
+
+        foreach (var bucket in histogram.Buckets)
+        {
+            int hour = DateTimeOffset.FromUnixTimeMilliseconds((long)bucket.Key).UtcDateTime.Hour;
+
+            hourlyTransactionCounts[hour].Count = bucket.DocCount ?? 0;
+        }
+
+        return hourlyTransactionCounts;
+    }
+
+
+
+    public List<WeeklyTransactionCount> GetMonthlyTransactionCounts(int observatoryId)
+    {
+        var elasticClient = _elasticSearchService.connect();
+
+
+        List<WeeklyTransactionCount> weeklyTransactionCounts = new List<WeeklyTransactionCount>();
+
+        DateTime now = DateTime.UtcNow;
+
+        DateTime firstOfMonth = new DateTime(now.Year, now.Month, 1);
+
+        for (int week = 0; week < 4; week++)
+        {
+            DateTime startOfWeek = firstOfMonth.AddDays(week * 7);
+            DateTime endOfWeek = startOfWeek.AddDays(7).AddTicks(-1);
+
+            var searchResponse = elasticClient.Count<TransactionDocument>(s => s
+                .Query(q => q
+                    .Bool(b => b
+                        .Filter(f => f
+                            .Bool(bb => bb
+                                .Must(
+                                    t => t.Term("observatoryId", observatoryId),
+                                    d => d.DateRange(r => r
+                                        .Field("transactionDate")
+                                        .GreaterThanOrEquals(startOfWeek)
+                                        .LessThanOrEquals(endOfWeek)
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+
+            if (!searchResponse.IsValid)
+            {
+                throw new ValidateErrorException($"Unable to query Elasticsearch for transaction count for week {week + 1}.");
+            }
+
+            weeklyTransactionCounts.Add(new WeeklyTransactionCount(week + 1, searchResponse.Count));
+        }
+
+        return weeklyTransactionCounts;
+    }
+
 
 }

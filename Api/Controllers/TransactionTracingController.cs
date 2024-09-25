@@ -189,6 +189,38 @@ public class TransactionTracingController : ControllerBase
             });
         }
     }
+    [HttpGet("relationship/score/{creditAccountId}/{debitAccountId}")]
+    public IActionResult GetAccountRelationshipScore(string creditAccountId, string debitAccountId)
+    {
+        try
+        {
+            var results = _AccountService.GetAccountRelationshipScore(creditAccountId, debitAccountId);
+
+            return Ok(new ApiResponse<List<AccountRelationshipResult>>
+            {
+                Status = "success",
+                Data = results
+            });
+        }
+        catch (ValidateErrorException ex)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = ex.Message },
+                Message = ex.Message
+            });
+        }
+        catch (System.Exception ex)
+        {
+            return StatusCode(500, new ApiResponse<dynamic>
+            {
+                Status = "error",
+                Message = "An unexpected error occurred.",
+                Error = new ApiError { Code = "", Details = ex.Message }
+            });
+        }
+    }
 
 
 }

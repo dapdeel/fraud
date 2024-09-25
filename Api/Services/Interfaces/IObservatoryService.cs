@@ -1,4 +1,5 @@
 using Api.DTOs;
+using Api.Entity;
 using Api.Models;
 using Api.Models.Responses;
 
@@ -18,5 +19,7 @@ namespace Api.Services.Interfaces
         Task<List<Observatory>> GetInvitedObservatoriesByUserId(string userId);
         Task<Observatory> SwitchCurrentObservatory(string userId, int observatoryId);
         Task<Observatory?> GetCurrentObservatory(string userId);
+        Task UpdateTransactionRules(int observatoryId, TransactionRules rulesDto);
+        Task<TransactionRules?> GetTransactionRules(int observatoryId);
     }
 }

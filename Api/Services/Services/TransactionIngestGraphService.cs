@@ -47,9 +47,39 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
             throw new ValidateErrorException("Could not connect tor Graph, Please check connection or contact Admin " + exception.Message);
         }
     }
+     private bool connect(string ObservatoryTag)
+    {
+        try
+        {
+            _Client = ElasticClient(ObservatoryTag);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            throw new ValidateErrorException("Could not connect tor Graph, Please check connection or contact Admin " + exception.Message);
+        }
+    }
     private ElasticClient ElasticClient(int ObservatoryId, bool Refresh = false)
     {
         var Observatory = _context.Observatories.Find(ObservatoryId);
+        if (Observatory == null || Observatory.UseDefault)
+        {
+            _Client = _ElasticSearchService.connect();
+            return _Client;
+        }
+        var Host = Observatory.ElasticSearchHost;
+        if (Host == null)
+        {
+            throw new ValidateErrorException("Unable to connect to Elastic Search");
+        }
+        _Client = _ElasticSearchService.connect(Host);
+        return _Client;
+
+    }
+
+    private ElasticClient ElasticClient(string ObservatoryTag, bool Refresh = false)
+    {
+        var Observatory = _context.Observatories.Where( o => o.ObservatoryTag == ObservatoryTag).First();
         if (Observatory == null || Observatory.UseDefault)
         {
             _Client = _ElasticSearchService.connect();
@@ -69,7 +99,7 @@ public class TransactionIngestGraphService : ITransactionIngestGraphService
     {
         try
         {
-            connect(data.ObservatoryId);
+            connect(data.ObservatoryTag);
              var refreshResponse = _Client.Indices.Refresh("transactions");
             _banks = _context.Banks.ToList();
             var debitCustomerResponse = IndexSingleCustomerAndAccount(data.DebitCustomer, data.DebitAccount);

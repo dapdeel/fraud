@@ -12,7 +12,7 @@ public class CustomerDocument
 
     public required string Type { get; set; }
     public DateTime CreatedAt { get; set; }
-    public required string ObservatoryTag {get;set;}
+    public required string ObservatoryTag { get; set; }
     public required string Document { get; set; }
 }
 public class AccountWithDetails
@@ -41,6 +41,7 @@ public class AccountDocument
     public bool Indexed { get; set; }
     public int Node { get; set; }
     public required string CustomerId { get; set; }
+    public required string ObservatoryTag { get; set; }
     public AccountType? AccountType { get; set; }
     public required string Type { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -98,6 +99,6 @@ public class UsedDeviceEdgeDocument
     public required string To { get; set; }
     public required string Document { get; set; }
     public required string Type { get; set; }
-     public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
 }

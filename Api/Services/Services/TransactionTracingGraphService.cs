@@ -107,7 +107,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
                     .Must(m => m
                         && m.Term(t => t.Field(doc => doc.Indexed).Value(true))
                         && m.Terms(t => t.Field(doc => doc.AccountId.Suffix("keyword")).Terms(accountIds))
-                    )
+                    )   
                 )
             )
         );

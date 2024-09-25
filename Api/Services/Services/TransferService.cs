@@ -46,31 +46,36 @@ public class TransferService : ITransferService
 
         _blobContainerName = _configuration.GetSection("AzureBlobStorage:ContainerName").Value;
     }
-    private ElasticClient ElasticClient(int ObservatoryId, bool Refresh = false)
+    private ElasticClient ElasticClient(string ObservatoryTag, bool Refresh = false)
     {
         if (!Refresh && _Client != null)
         {
             return _Client;
         }
-        var Observatory = _context.Observatories.Find(ObservatoryId);
+
+        // Filter using ObservatoryTag instead of Find by ID
+        var Observatory = _context.Observatories.FirstOrDefault(o => o.ObservatoryTag == ObservatoryTag);
+
         if (Observatory == null || Observatory.UseDefault)
         {
             _Client = _ElasticSearchService.connect();
             return _Client;
         }
+
         var Host = Observatory.ElasticSearchHost;
         if (!Observatory.UseDefault && Host == null)
         {
             throw new ValidateErrorException("Unable to connect to Elastic Search");
         }
+
         _Client = _ElasticSearchService.connect(Host);
         return _Client;
-
     }
+
 
     public async Task<TransactionDocument> Ingest(TransactionTransferRequest request, bool IndexToGraph = true)
     {
-        ElasticClient(request.ObservatoryId);
+        ElasticClient(request.ObservatoryTag);
         List<string> errors = ValidateTransactionTransfer(request);
         if (errors.Count > 0)
         {
@@ -99,7 +104,7 @@ public class TransferService : ITransferService
                 CreditCustomer = CreditCustomer,
                 CreditAccount = CreditAccount,
                 Transaction = transaction,
-                ObservatoryId = request.ObservatoryId
+                ObservatoryTag = request.ObservatoryTag
             };
             if (request.DebitCustomer.Device != null && request.DebitCustomer.Device?.DeviceId != null)
             {
@@ -180,7 +185,7 @@ public class TransferService : ITransferService
         }
     }
 
-    public async Task<string> UploadAndIngest(int ObservatoryId, IFormFile file)
+    public async Task<string> UploadAndIngest(string ObservatoryId, IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
@@ -312,7 +317,8 @@ public class TransferService : ITransferService
             DebitCustomer = DebitCustomer,
             CreditCustomer = CreditCustomer,
             Transaction = Transaction,
-            ObservatoryId = record.ObservatoryId
+            ObservatoryTag= record.ObservatoryTag,
+           ObservatoryId=record.ObservatoryId
         };
         return request;
 
@@ -399,7 +405,7 @@ public class TransferService : ITransferService
             var transaction = new TransactionDocument
             {
                 Amount = request.Transaction.Amount,
-                ObservatoryId = request.ObservatoryId,
+                ObservatoryTag = request.ObservatoryTag,
                 PlatformId = Guid.NewGuid().ToString(),
                 TransactionId = request.Transaction.TransactionId,
                 CreditAccountId = creditAccount.AccountId,
@@ -470,10 +476,10 @@ public class TransferService : ITransferService
         {
             errors.Add("Invalid Credit Account Bank Supplied");
         }
-        if (request.ObservatoryId <= 0)
+       /* if (request.ObservatoryId <= 0)
         {
             errors.Add("Please Specify what observatory you are monitoring");
-        }
+        }*/
 
         return errors;
     }

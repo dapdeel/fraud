@@ -32,8 +32,11 @@ public class ObservatoryService : IObservatoryService
         {
             throw new ValidateErrorException("Could not Find User");
         }
+
+
         Observatory observatory = new Observatory
         {
+            ObservatoryTag = Guid.NewGuid().ToString(),
             BankId = request.BankId,
             Currency = request.Currency,
             FrequencyCount = request.FrequencyCount,
@@ -52,6 +55,7 @@ public class ObservatoryService : IObservatoryService
         UserObservatory userObservatory = new UserObservatory
         {
             ObservatoryId = observatory.Id,
+            ObservatoryTag = Guid.NewGuid().ToString(),
             UserId = user.Id,
             Role = Role.Admin,
             Status = Status.Member,
@@ -74,6 +78,7 @@ public class ObservatoryService : IObservatoryService
         UserObservatory userObservatory = new UserObservatory
         {
             ObservatoryId = request.ObservatoryId,
+            ObservatoryTag = Guid.NewGuid().ToString(),
             UserId = request.UserId,
             Role = Role.Member,
             Status = Status.Invited,
@@ -185,18 +190,18 @@ public class ObservatoryService : IObservatoryService
         throw new NotImplementedException();
     }
 
-    public async Task<Observatory?> Get(int id, string userId)
+    public async Task<Observatory?> Get(string id, string userId)
     {
-        var userObservatory = _context.UserObservatories
-            .Where(uo => uo.ObservatoryId == id && uo.UserId == userId && uo.Status == Status.Member)
+        /*var userObservatory = _context.UserObservatories
+            .Where(uo => uo.ObservatoryTag == id && uo.UserId == userId && uo.Status == Status.Member)
             .FirstOrDefault();
         if (userObservatory == null)
         {
             throw new ValidateErrorException("You are not a member of this observatory.");
-        }
+        }*/
         var observatory = await _context.Observatories
             .Include(o => o.TransactionRules)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.ObservatoryTag == id);
         return observatory;
     }
 

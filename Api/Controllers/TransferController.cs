@@ -35,7 +35,7 @@ public class TransferController : ControllerBase
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var observatory = await _observatoryService.Get(request.ObservatoryId, userId);
+            var observatory = await _observatoryService.Get(request.ObservatoryTag, userId);
             var requestString = JsonConvert.SerializeObject(request);
             var queueName = _configuration.GetValue<string>("IngestQueueName");
             await _queuePublisherService.PublishAsync(queueName, requestString);
@@ -63,7 +63,7 @@ public class TransferController : ControllerBase
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var observatory = await _observatoryService.Get(request.ObservatoryId, userId);
+            var observatory = await _observatoryService.Get(request.ObservatoryTag, userId);
             var response = await _service.Ingest(request, true);
 
             return Ok(new ApiResponse<object>
@@ -92,7 +92,7 @@ public class TransferController : ControllerBase
             if(request.ObservatoryId <= 0){
                 throw new ValidateErrorException("Invalid ObservatoryId");
             }
-            var response = await _service.UploadAndIngest(request.ObservatoryId, file);
+            var response = await _service.UploadAndIngest(request.ObservatoryTag, file);
 
             return Ok(new ApiResponse<object>
             {

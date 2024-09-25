@@ -10,6 +10,8 @@ public class UserObservatory
     
     public ApplicationUser? User { get; set; } = null;
     public required int ObservatoryId { get; set; }
+
+    public required string ObservatoryTag {  get; set; }
     public Observatory? Observatory { get; set; } = null;
     public Role Role { get; set; }
 

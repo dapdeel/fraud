@@ -6,6 +6,7 @@ namespace Api.Models;
 public class Observatory
 {
     public int Id { get; set; }
+    public required string ObservatoryTag { get; set; }
     [Required]
     public required string Currency { get; set; }
     public int FrequencyCount { get; set; }

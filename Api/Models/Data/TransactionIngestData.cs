@@ -8,5 +8,7 @@ public class TransactionIngestData
     public required CustomerDocument CreditCustomer { get; set; }
     public required TransactionDocument Transaction { get; set; }
     public int ObservatoryId {get;set;}
+
+    public string ObservatoryTag { get;set;}
     public DeviceDocument? Device { get; set; }
 }

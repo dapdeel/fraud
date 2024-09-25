@@ -16,6 +16,7 @@ using CsvHelper.Configuration;
 using Nest;
 using System.Text;
 using Hangfire;
+using Api.Migrations;
 
 public class TransferService : ITransferService
 {
@@ -76,6 +77,7 @@ public class TransferService : ITransferService
     public async Task<TransactionDocument> Ingest(TransactionTransferRequest request, bool IndexToGraph = true)
     {
         ElasticClient(request.ObservatoryTag);
+        var observatory = _context.Observatories.Where(o => o.ObservatoryTag == request.ObservatoryTag).First();
         List<string> errors = ValidateTransactionTransfer(request);
         if (errors.Count > 0)
         {
@@ -83,16 +85,16 @@ public class TransferService : ITransferService
         }
         try
         {
-            var d = GetTransaction(request.Transaction.TransactionId, request.ObservatoryId);
+            var d = GetTransaction(request.Transaction.TransactionId, observatory.ObservatoryTag);
             if (d != null)
             {
                 return d;
             }
 
-            var DebitCustomer = AddCustomer(request.DebitCustomer);
+            var DebitCustomer = AddCustomer(request.DebitCustomer,observatory.ObservatoryTag);
             var DebitAccount = AddAccount(request.DebitCustomer.Account, DebitCustomer);
 
-            var CreditCustomer = AddCustomer(request.CreditCustomer);
+            var CreditCustomer = AddCustomer(request.CreditCustomer,observatory.ObservatoryTag);
             var CreditAccount = AddAccount(request.CreditCustomer.Account, CreditCustomer);
 
             var transaction = AddTransaction(request, DebitAccount, CreditAccount);
@@ -139,7 +141,7 @@ public class TransferService : ITransferService
             // throw new ValidateErrorException("There were issues in completing the Transaction " + Exception.Message);
         }
     }
-    private TransactionDocument? GetTransaction(string TransactionId, int observatoryId)
+    private TransactionDocument? GetTransaction(string TransactionId, string observatoryId)
     {
         try
         {
@@ -317,13 +319,12 @@ public class TransferService : ITransferService
             DebitCustomer = DebitCustomer,
             CreditCustomer = CreditCustomer,
             Transaction = Transaction,
-            ObservatoryTag= record.ObservatoryTag,
-           ObservatoryId=record.ObservatoryId
+            ObservatoryTag= record.ObservatoryTag
         };
         return request;
 
     }
-    private CustomerDocument AddCustomer(CustomerRequest customerRequest)
+    private CustomerDocument AddCustomer(CustomerRequest customerRequest, string ObservatoryTag)
     {
 
         try
@@ -343,6 +344,7 @@ public class TransferService : ITransferService
                     FullName = customerRequest.Name,
                     Email = customerRequest.Email,
                     Phone = customerRequest.Phone,
+                    ObservatoryTag = ObservatoryTag,
                     CreatedAt = DateTime.Now,
                     Document = NodeData.Customer,
                     Type = DocumentType.Node
@@ -380,6 +382,7 @@ public class TransferService : ITransferService
                     AccountType = accountRequest.AccountType,
                     CustomerId = customer.CustomerId,
                     CreatedAt = DateTime.Now,
+                    ObservatoryTag = customer.ObservatoryTag,
                     Type = DocumentType.Node,
                     Document = NodeData.Account
                 };

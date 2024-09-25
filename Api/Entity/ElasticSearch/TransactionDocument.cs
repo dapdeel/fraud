@@ -22,7 +22,7 @@ public class TransactionDocument
     public required string CreditAccountId { get; set; }
     public string? DeviceDocumentId { get; set; }
     public int ObservatoryId { get; set; }
-   public string ObservatoryTag { get; set; }
+   public required string ObservatoryTag { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public required string Document { get; set; }

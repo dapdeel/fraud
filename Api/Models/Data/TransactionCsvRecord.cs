@@ -72,9 +72,6 @@ public class TransactionCsvRecord
     public  string TransactionType { get; set; }
 
     // ObservatoryId
-    [Name("ObservatoryId")]
-    public int ObservatoryId { get; set; }
-
-
+    [Name("ObservatoryTag")]
     public string ObservatoryTag { get; set; }
 }

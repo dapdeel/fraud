@@ -46,7 +46,6 @@ public class TransferIngestConsumerService : BackgroundService
                     using (var scope = _scopeFactory.CreateScope())
                     {
                         var consumeResult = _consumer.Consume(stoppingToken);
-                        Console.WriteLine("Hi");
                         var response = JsonSerializer.Deserialize<TransactionTransferRequest>(consumeResult.Message.Value);
                         var transferService = scope.ServiceProvider.GetRequiredService<ITransferService>();
                         if (response != null)

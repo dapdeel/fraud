@@ -12,7 +12,7 @@ public class CustomerDocument
 
     public required string Type { get; set; }
     public DateTime CreatedAt { get; set; }
-
+    public required string ObservatoryTag {get;set;}
     public required string Document { get; set; }
 }
 public class AccountWithDetails

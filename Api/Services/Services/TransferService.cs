@@ -255,7 +255,7 @@ public class TransferService : ITransferService
                 throw new ValidateErrorException("Invalid Queue Name");
             }
 
-            _queuePublisherService.PublishAsync(ingestFileQueueName, requestString);
+            await _queuePublisherService.PublishAsync(ingestFileQueueName, requestString);
             _context.SaveChanges();
 
             return url;

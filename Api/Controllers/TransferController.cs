@@ -63,7 +63,6 @@ public class TransferController : ControllerBase
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-          //  var observatory = await _observatoryService.Get(request.ObservatoryTag, userId);
             var response = await _service.Ingest(request, true);
 
             return Ok(new ApiResponse<object>

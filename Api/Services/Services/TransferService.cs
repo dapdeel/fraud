@@ -91,10 +91,10 @@ public class TransferService : ITransferService
                 return d;
             }
 
-            var DebitCustomer = AddCustomer(request.DebitCustomer,observatory.ObservatoryTag);
+            var DebitCustomer = AddCustomer(request.DebitCustomer, observatory.ObservatoryTag);
             var DebitAccount = AddAccount(request.DebitCustomer.Account, DebitCustomer);
 
-            var CreditCustomer = AddCustomer(request.CreditCustomer,observatory.ObservatoryTag);
+            var CreditCustomer = AddCustomer(request.CreditCustomer, observatory.ObservatoryTag);
             var CreditAccount = AddAccount(request.CreditCustomer.Account, CreditCustomer);
 
             var transaction = AddTransaction(request, DebitAccount, CreditAccount);
@@ -189,6 +189,11 @@ public class TransferService : ITransferService
 
     public async Task<string> UploadAndIngest(string ObservatoryId, IFormFile file)
     {
+        var observatory = _context.Observatories.Where(o => o.ObservatoryTag == ObservatoryId).FirstOrDefault();
+        if (observatory == null)
+        {
+            throw new ValidateErrorException("Invalid Observatory");
+        }
         if (file == null || file.Length == 0)
         {
             throw new ValidateErrorException("No file was uploaded.");
@@ -319,7 +324,7 @@ public class TransferService : ITransferService
             DebitCustomer = DebitCustomer,
             CreditCustomer = CreditCustomer,
             Transaction = Transaction,
-            ObservatoryTag= record.ObservatoryTag
+            ObservatoryTag = record.ObservatoryTag
         };
         return request;
 
@@ -479,10 +484,10 @@ public class TransferService : ITransferService
         {
             errors.Add("Invalid Credit Account Bank Supplied");
         }
-       /* if (request.ObservatoryId <= 0)
-        {
-            errors.Add("Please Specify what observatory you are monitoring");
-        }*/
+        /* if (request.ObservatoryId <= 0)
+         {
+             errors.Add("Please Specify what observatory you are monitoring");
+         }*/
 
         return errors;
     }

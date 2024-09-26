@@ -88,8 +88,9 @@ public class TransferController : ControllerBase
     {
         try
         {
-            if(request.ObservatoryId <= 0){
-                throw new ValidateErrorException("Invalid ObservatoryId");
+            if (string.IsNullOrEmpty(request.ObservatoryTag))
+            {
+                throw new ValidateErrorException("Invalid Observatory");
             }
             var response = await _service.UploadAndIngest(request.ObservatoryTag, file);
 

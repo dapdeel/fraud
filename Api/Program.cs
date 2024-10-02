@@ -132,7 +132,7 @@ var dashboardOptions =
             };
 app.UseHangfireDashboard("/jobs", new DashboardOptions
 {
-    Authorization = new[] { new UseHangfireDashboardFilter() } // Allow everyone to access
+    Authorization = new[] { new UseHangfireDashboardFilter() } 
 });
 
 

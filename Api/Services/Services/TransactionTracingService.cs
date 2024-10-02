@@ -23,7 +23,7 @@ namespace Api.Services.TransactionTracing
                 .CountAsync(t => (t.DebitAccount.AccountNumber == accountNumber || t.CreditAccount.AccountNumber == accountNumber) &&
                                  t.TransactionDate >= DateTime.UtcNow.AddDays(-30));
         }
-        public List<TransactionGraphDetails> GetAllTransactions(int ObservatoryId, DateTime fromDate, int pageNumber, int batchSize)
+        public List<TransactionGraphDetails> GetAllTransactions(string ObservatoryId, DateTime fromDate, int pageNumber, int batchSize)
         {
             return _transactionTracingGraphService.GetTransactions(ObservatoryId, fromDate, pageNumber, batchSize);
         }
@@ -70,7 +70,7 @@ namespace Api.Services.TransactionTracing
         }
 
 
-        public TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId)
+        public TransactionGraphDetails GetTransactionById(string observatoryId, string transactionId)
         {
             try
             {
@@ -109,22 +109,22 @@ namespace Api.Services.TransactionTracing
             var response = _transactionTracingGraphService.GetNode(observatoryId, nodeId);
             return response;
         }
-        public long GetTransactionCount(int ObservatoryId, DateTime dateTime)
+        public long GetTransactionCount(string ObservatoryId, DateTime dateTime)
         {
            return  _transactionTracingGraphService.GetTransactionCount(ObservatoryId,dateTime);
         }
 
-        public List<HourlyTransactionCount> GetDailyTransactionCounts(int observatoryId, DateTime transactionDate)
+        public List<HourlyTransactionCount> GetDailyTransactionCounts(string observatoryId, DateTime transactionDate)
         {
             return _transactionTracingGraphService.GetDailyTransactionCounts(observatoryId);
         }
 
-        public List<WeekDayTransactionCount> GetWeeklyTransactionCounts(int observatoryId)
+        public List<WeekDayTransactionCount> GetWeeklyTransactionCounts(string observatoryId)
         {
             return _transactionTracingGraphService.GetWeekDayTransactionCounts(observatoryId);
         }
 
-        public List<WeeklyTransactionCount> GetMonthlyTransactionCounts(int observatoryId)
+        public List<WeeklyTransactionCount> GetMonthlyTransactionCounts(string observatoryId)
         {
             return _transactionTracingGraphService.GetMonthlyTransactionCounts(observatoryId);
         }

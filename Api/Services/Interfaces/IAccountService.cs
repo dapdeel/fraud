@@ -8,7 +8,7 @@ namespace Api.Interfaces
         AccountDocument? GetByAccountNumberAndBankId(string AccountNumber, int bankId, Observatory observatory);
 
         AccountWithDetailsDto? GetAccountDetails(string AccountNumber, int BankId);
-        List<AccountWithDetailsDto> GetAccountsByPage(int pageNumber, int batch);
+        List<AccountWithDetailsDto> GetAccountsByPage(int pageNumber, int batch, string observatoryTag);
         long GetAccountCount();
         List<AccountRelationshipResult> GetAccountRelationshipScore(string creditAccountId, string debitAccountId);
 

@@ -20,7 +20,7 @@ public class TransactionTracingController : ControllerBase
         _AccountService = accountService;   
     }
     [HttpGet("Start/{ObservatoryId}/{TransactionId}")]
-    public IActionResult Start(int ObservatoryId, string TransactionId)
+    public IActionResult Start(string ObservatoryId, string TransactionId)
     {
         try
         {
@@ -163,7 +163,7 @@ public class TransactionTracingController : ControllerBase
     {
         try
         {
-            var accounts = _AccountService.GetAccountsByPage(accountRequest.PageNumber, accountRequest.BatchSize);
+            var accounts = _AccountService.GetAccountsByPage(accountRequest.PageNumber, accountRequest.BatchSize, accountRequest.ObservatoryTag);
             return Ok(new ApiResponse<List<AccountWithDetailsDto>>
             {
                 Status = "success",

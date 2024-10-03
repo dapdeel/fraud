@@ -2,6 +2,7 @@ using Api.CustomException;
 using Api.Data;
 using Api.DTOs;
 using Api.Interfaces;
+using Api.Migrations;
 using Api.Models;
 using Api.Services.Interfaces;
 using Gremlin.Net.Process.Traversal;
@@ -185,7 +186,7 @@ public class AccountService : IAccountService
         return searchResponse.Count;
     }
 
-    public List<AccountWithDetailsDto> GetAccountsByPage(int pageNumber, int batch)
+    public List<AccountWithDetailsDto> GetAccountsByPage(int pageNumber, int batch, string observatoryTag)
     {
         var elasticClient = _elasticSearchService.connect();
         int from = pageNumber * batch;
@@ -196,13 +197,20 @@ public class AccountService : IAccountService
             .Query(q => q
                 .Bool(b => b
                     .Filter(f => f
+                        
                         .Term(t => t
                             .Field("document.keyword")
                             .Value("Account")
                         )
+                
                         && f.Term(t => t
                             .Field("indexed")
                             .Value(true)
+                        )
+                   
+                        && f.Term(t => t
+                            .Field("observatoryTag.keyword") 
+                            .Value(observatoryTag)
                         )
                     )
                 )
@@ -229,11 +237,11 @@ public class AccountService : IAccountService
         return accountsWithDetails;
     }
 
+
     public List<AccountRelationshipResult> GetAccountRelationshipScore(string creditAccountId, string debitAccountId)
     {
         var elasticClient = _elasticSearchService.connect();
 
-        // Query for credit -> debit relationship
         var creditToDebitResponse = elasticClient.Search<TransferredEdgeDocumentDTO>(s => s
             .Query(q => q
                 .Bool(b => b
@@ -247,7 +255,6 @@ public class AccountService : IAccountService
             )
         );
 
-        // Query for debit -> credit relationship
         var debitToCreditResponse = elasticClient.Search<TransferredEdgeDocumentDTO>(s => s
             .Query(q => q
                 .Bool(b => b
@@ -261,13 +268,11 @@ public class AccountService : IAccountService
             )
         );
 
-        // Prepare the results list
         var results = new List<AccountRelationshipResult>();
 
-        // For credit -> debit relationship
         var creditToDebitResult = new AccountRelationshipResult
         {
-            RelationshipType = "credit-to-debit"  // Label the relationship type
+            RelationshipType = "credit-to-debit" 
         };
         if (creditToDebitResponse.Documents.Count > 0)
         {
@@ -284,10 +289,9 @@ public class AccountService : IAccountService
         }
         results.Add(creditToDebitResult);
 
-        // For debit -> credit relationship
         var debitToCreditResult = new AccountRelationshipResult
         {
-            RelationshipType = "debit-to-credit"  // Label the relationship type
+            RelationshipType = "debit-to-credit"  
         };
         if (debitToCreditResponse.Documents.Count > 0)
         {

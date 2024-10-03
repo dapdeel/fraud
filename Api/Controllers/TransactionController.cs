@@ -58,7 +58,7 @@ namespace Api.Controllers
 
 
         [HttpGet("{transactionId}")]
-        public IActionResult GetTransactionById(int observatoryId, string transactionId)
+        public IActionResult GetTransactionById(string observatoryId, string transactionId)
         {
             try
             {
@@ -93,7 +93,7 @@ namespace Api.Controllers
 
 
         [HttpGet("count/{ObservatoryId}/{startDate}")]
-        public  IActionResult GetTransactionsCount(int ObservatoryId, DateTime startDate)
+        public  IActionResult GetTransactionsCount(string ObservatoryId, DateTime startDate)
         {
             try
             {
@@ -329,7 +329,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("transactions/daily/count")]
-        public IActionResult GetDailyTransactionCounts(int observatoryId, DateTime transactionDate)
+        public IActionResult GetDailyTransactionCounts(string observatoryId, DateTime transactionDate)
         {
             try
             {
@@ -363,7 +363,7 @@ namespace Api.Controllers
 
 
         [HttpGet("transactions/weekly/count")]
-        public IActionResult GetWeeklyTransactionCount(int observatoryId)
+        public IActionResult GetWeeklyTransactionCount(string observatoryId)
         {
             try
             {
@@ -396,7 +396,7 @@ namespace Api.Controllers
 
 
         [HttpGet("transactions/monthly/counts")]
-        public IActionResult GetMonthlyTransactionCounts(int observatoryId)
+        public IActionResult GetMonthlyTransactionCounts(string observatoryId)
         {
             try
             {

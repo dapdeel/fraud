@@ -53,17 +53,17 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
     }
 
 
-    public TransactionGraphDetails GetTransactionAsync(int observatoryId, string transactionId)
+    public TransactionGraphDetails GetTransactionAsync(string observatoryTag, string transactionId)
     {
         var elasticClient = _elasticSearchService.connect();
 
         var transactionResponse = elasticClient.Search<TransactionDocument>(s => s
             .Query(q => q
                 .Bool(b => b
-                    .Must(m => m
-                        && m.Term(t => t.Field(doc => doc.Indexed).Value(true))
-                        && m.Term(t => t.Field(doc => doc.ObservatoryId).Value(observatoryId))
-                        && m.Term(t => t.Field(doc => doc.TransactionId.Suffix("keyword")).Value(transactionId))
+                    .Filter(f => f
+                        .Term(t => t.Field(doc => doc.Indexed).Value(true)) 
+                        && f.Match(m => m.Field(doc => doc.observatoryTag).Query(observatoryTag)) 
+                        && f.Term(t => t.Field(doc => doc.TransactionId.Suffix("keyword")).Value(transactionId)) 
                     )
                 )
             )
@@ -86,7 +86,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
         var edges = new List<Edge>();
 
-        var nodes = CreateNodes(accountDocuments, creditAccountId, debitAccountId,transactionDate,amount,description);
+        var nodes = CreateNodes(accountDocuments, creditAccountId, debitAccountId, transactionDate, amount, description);
 
         var response = new TransactionGraphDetails
         {
@@ -96,7 +96,6 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
         return response;
     }
-
     private IDictionary<dynamic, dynamic> GetAccountDocuments(string[] accountIds, IElasticClient elasticClient)
     {
         var accountDocuments = new Dictionary<dynamic, dynamic>();
@@ -291,6 +290,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
                         CreditAccountId = transaction.CreditAccountId,
                         DeviceDocumentId = transaction.DeviceDocumentId,
                         ObservatoryId = transaction.ObservatoryId,
+                        ObservatoryTag = transaction.observatoryTag,
                         CreatedAt = transaction.CreatedAt,
                         UpdatedAt = transaction.UpdatedAt,
                         Document = transaction.Document
@@ -352,7 +352,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
     }
 
 
-    public List<TransactionGraphDetails> GetTransactions(int observatoryId, DateTime transactionDate, int pageNumber, int batch)
+    public List<TransactionGraphDetails> GetTransactions(string observatoryTag, DateTime transactionDate, int pageNumber, int batch)
     {
         var elasticClient = _elasticSearchService.connect();
         int from = pageNumber * batch;
@@ -362,8 +362,9 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             .Query(q => q
                 .Bool(b => b
                     .Filter(f => f
-                        .Term(t => t.Field("observatoryId").Value(observatoryId))
-                        && f.DateRange(r => r
+                        .Match(m => m.Field("observatoryTag").Query(observatoryTag)) // Match observatoryTag
+                        && f.Term(t => t.Field("indexed").Value(true)) // Filter by indexed = true
+                        && f.DateRange(r => r // Filter by transactionDate greater than or equal to the provided date
                             .Field("transactionDate")
                             .GreaterThanOrEquals(transactionDate)
                         )
@@ -383,11 +384,11 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
         foreach (var hit in searchResponse.Hits)
         {
-            var nodeDetails = ConvertToDictionary(hit.Source); 
+            var nodeDetails = ConvertToDictionary(hit.Source);
 
             var response = new TransactionGraphDetails
             {
-                Edges = null, 
+                Edges = null,
                 Node = nodeDetails
             };
 
@@ -396,6 +397,9 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
         return data;
     }
+
+
+
 
     private IDictionary<dynamic, dynamic> ConvertToDictionary(TransactionDocument document)
     {
@@ -412,6 +416,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         dictionary["debitAccountId"] = document.DebitAccountId;
         dictionary["creditAccountId"] = document.CreditAccountId;
         dictionary["observatoryId"] = document.ObservatoryId;
+        dictionary["observatoryTag"] = document.observatoryTag;
         dictionary["createdAt"] = document.CreatedAt;
         dictionary["updatedAt"] = document.UpdatedAt;
 
@@ -419,7 +424,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
     }
 
 
-    public TransactionGraphDetails GetTransactionById(int observatoryId, string transactionId)
+    public TransactionGraphDetails GetTransactionById(string observatoryTag, string transactionId)
     {
         var elasticClient = _elasticSearchService.connect();
 
@@ -427,7 +432,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             .Query(q => q
                 .Bool(b => b
                     .Filter(f => f
-                        .Term(t => t.Field("observatoryId").Value(observatoryId))  
+                        .Term(t => t.Field("observatoryTag").Value(observatoryTag))  
                         && f.Term(t => t.Field("transactionId").Value(transactionId))  
                     )
                 )
@@ -453,26 +458,18 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
     }
 
 
-    public long GetTransactionCount(int observatoryId, DateTime transactionDate)
+    public long GetTransactionCount(string observatoryTag, DateTime transactionDate)
     {
         var elasticClient = _elasticSearchService.connect();
-
-        string formattedDate = transactionDate.ToString("yyyy-MM-ddTHH:mm:ssZ");
 
         var searchResponse = elasticClient.Count<TransactionDocument>(s => s
             .Query(q => q
                 .Bool(b => b
                     .Filter(f => f
-                        .Bool(bb => bb
-                            .Must(
-                                t => t
-                                    .Term("observatoryId", observatoryId),
-                                d => d
-                                    .DateRange(r => r
-                                        .Field("transactionDate")
-                                        .GreaterThanOrEquals(formattedDate)
-                                    )
-                            )
+                        .Match(m => m.Field("observatoryTag").Query(observatoryTag)) // Match observatoryTag
+                        && f.DateRange(r => r
+                            .Field("transactionDate")
+                            .GreaterThanOrEquals(transactionDate) // Use DateTime object directly
                         )
                     )
                 )
@@ -487,7 +484,8 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         return searchResponse.Count;
     }
 
-    public List<WeekDayTransactionCount> GetWeekDayTransactionCounts(int observatoryId)
+
+    public List<WeekDayTransactionCount> GetWeekDayTransactionCounts(string observatoryTag)
     {
         var elasticClient = _elasticSearchService.connect();
 
@@ -497,12 +495,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             return dt.AddDays(-1 * diff).Date;
         }
 
-      
         DateTime startOfWeek = StartOfWeek(DateTime.UtcNow, DayOfWeek.Sunday);
-
- 
-        DateTime currentTime = DateTime.UtcNow;
-
         DateTime endOfWeek = startOfWeek.AddDays(7).AddTicks(-1);
 
         var searchResponse = elasticClient.Search<TransactionDocument>(s => s
@@ -510,9 +503,9 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             .Query(q => q
                 .Bool(b => b
                     .Filter(f => f
-                        .Term(t => t.Field("observatoryId").Value(observatoryId)) 
+                        .Match(m => m.Field("observatoryTag").Query(observatoryTag)) 
                         && f.DateRange(r => r
-                            .Field("transactionDate") 
+                            .Field("transactionDate")
                             .GreaterThanOrEquals(startOfWeek)
                             .LessThanOrEquals(endOfWeek)
                         )
@@ -522,9 +515,9 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             .Aggregations(a => a
                 .DateHistogram("transactions_per_day", dh => dh
                     .Field("transactionDate")
-                    .FixedInterval("1d") 
+                    .FixedInterval("1d")
                     .MinimumDocumentCount(0)
-                    .ExtendedBounds(startOfWeek, endOfWeek) 
+                    .ExtendedBounds(startOfWeek, endOfWeek)
                 )
             )
         );
@@ -548,7 +541,6 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
         foreach (var bucket in histogram.Buckets)
         {
             DateTimeOffset dayStart = DateTimeOffset.FromUnixTimeMilliseconds((long)bucket.Key).UtcDateTime;
-
             string dayOfWeek = dayStart.DayOfWeek.ToString();
 
             var transactionDay = weeklyTransactionCounts.FirstOrDefault(x => x.Day == dayOfWeek);
@@ -564,8 +556,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
 
 
-
-    public List<HourlyTransactionCount> GetDailyTransactionCounts(int observatoryId)
+    public List<HourlyTransactionCount> GetDailyTransactionCounts(string observatoryTag)
     {
         var elasticClient = _elasticSearchService.connect();
 
@@ -579,7 +570,7 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             .Query(q => q
                 .Bool(b => b
                     .Filter(f => f
-                        .Term(t => t.Field("observatoryId").Value(observatoryId))
+                        .Term(t => t.Field("observatoryTag").Value(observatoryTag))
                         && f.DateRange(r => r
                             .Field("transactionDate")
                             .GreaterThanOrEquals(startOfDay)
@@ -624,17 +615,16 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
 
 
-    public List<WeeklyTransactionCount> GetMonthlyTransactionCounts(int observatoryId)
+    public List<WeeklyTransactionCount> GetMonthlyTransactionCounts(string observatoryTag)
     {
         var elasticClient = _elasticSearchService.connect();
-
 
         List<WeeklyTransactionCount> weeklyTransactionCounts = new List<WeeklyTransactionCount>();
 
         DateTime now = DateTime.UtcNow;
-
         DateTime firstOfMonth = new DateTime(now.Year, now.Month, 1);
 
+        // Loop through the weeks in the month
         for (int week = 0; week < 4; week++)
         {
             DateTime startOfWeek = firstOfMonth.AddDays(week * 7);
@@ -644,15 +634,11 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
                 .Query(q => q
                     .Bool(b => b
                         .Filter(f => f
-                            .Bool(bb => bb
-                                .Must(
-                                    t => t.Term("observatoryId", observatoryId),
-                                    d => d.DateRange(r => r
-                                        .Field("transactionDate")
-                                        .GreaterThanOrEquals(startOfWeek)
-                                        .LessThanOrEquals(endOfWeek)
-                                    )
-                                )
+                            .Match(m => m.Field("observatoryTag").Query(observatoryTag)) 
+                            && f.DateRange(r => r 
+                                .Field("transactionDate")
+                                .GreaterThanOrEquals(startOfWeek)
+                                .LessThanOrEquals(endOfWeek)
                             )
                         )
                     )
@@ -663,12 +649,12 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
             {
                 throw new ValidateErrorException($"Unable to query Elasticsearch for transaction count for week {week + 1}.");
             }
-
             weeklyTransactionCounts.Add(new WeeklyTransactionCount(week + 1, searchResponse.Count));
         }
 
         return weeklyTransactionCounts;
     }
+
 
 
 }

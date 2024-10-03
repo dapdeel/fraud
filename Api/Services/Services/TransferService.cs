@@ -413,7 +413,7 @@ public class TransferService : ITransferService
             var transaction = new TransactionDocument
             {
                 Amount = request.Transaction.Amount,
-                ObservatoryTag = request.ObservatoryTag,
+                observatoryTag = request.ObservatoryTag,
                 PlatformId = Guid.NewGuid().ToString(),
                 TransactionId = request.Transaction.TransactionId,
                 CreditAccountId = creditAccount.AccountId,

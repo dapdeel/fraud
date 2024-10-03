@@ -4,6 +4,8 @@
     {
         public int PageNumber { get; set; }
         public int BatchSize { get; set; }
+
+        public string ObservatoryTag { get; set; }
     }
 
 }

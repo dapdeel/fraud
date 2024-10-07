@@ -57,6 +57,56 @@ namespace Api.Controllers
         }
 
 
+        [HttpPost("transactions/date-range")]
+        public IActionResult GetTransactionsWithinDateRange([FromBody] TransactionListRequest transactionRequest)
+        {
+            try
+            {
+                if (!transactionRequest.StartDate.HasValue || !transactionRequest.EndDate.HasValue)
+                {
+                    return BadRequest(new ApiResponse<dynamic>
+                    {
+                        Status = "ValidationError",
+                        Message = "StartDate and EndDate are required for this request.",
+                        Error = new ApiError { Code = "400", Details = "Invalid date range." }
+                    });
+                }
+
+                var transactions = _transactionService.GetAllTransactionsWithinDateRange(
+                    transactionRequest.ObservatoryId,
+                    transactionRequest.StartDate.Value,
+                    transactionRequest.EndDate.Value,
+                    transactionRequest.pageNumber,
+                    transactionRequest.batchSize
+                );
+
+                return Ok(new ApiResponse<List<TransactionGraphDetails>>
+                {
+                    Status = "success",
+                    Data = transactions
+                });
+            }
+            catch (ValidateErrorException ex)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Error = new ApiError { Code = "", Details = ex.Message },
+                    Message = ex.Message
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "An unexpected error occurred.",
+                    Error = new ApiError { Code = "", Details = ex.Message }
+                });
+            }
+        }
+
+
         [HttpGet("{transactionId}")]
         public IActionResult GetTransactionById(string observatoryId, string transactionId)
         {
@@ -99,6 +149,39 @@ namespace Api.Controllers
             {
                 var transactions = _transactionService.GetTransactionCount(ObservatoryId,startDate);
         
+                return Ok(new ApiResponse<long>
+                {
+                    Status = "success",
+                    Data = transactions
+                });
+            }
+            catch (ValidateErrorException ex)
+            {
+                return BadRequest(new ApiResponse<dynamic>
+                {
+                    Status = "ValidationError",
+                    Error = new ApiError { Code = "", Details = ex.Message },
+                    Message = ex.Message
+                });
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<dynamic>
+                {
+                    Status = "error",
+                    Message = "An unexpected error occurred.",
+                    Error = new ApiError { Code = "", Details = ex.Message }
+                });
+            }
+        }
+
+        [HttpGet("count/{ObservatoryTag}/{startDate}/{endDate}")]
+        public IActionResult GetTransactionWithinDateRangeCount(string ObservatoryTag, DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                var transactions = _transactionService.GetTransactionWithinDateRangeCount(ObservatoryTag, startDate, endDate);
+
                 return Ok(new ApiResponse<long>
                 {
                     Status = "success",
@@ -255,46 +338,6 @@ namespace Api.Controllers
         }
 
 
-      /*  [HttpGet("{transactionId}")]
-        public async Task<IActionResult> GetTransactionById(int transactionId)
-        {
-            try
-            {
-                var transaction = await _transactionService.GetTransactionById(transactionId);
-                if (transaction == null)
-                {
-                    return NotFound(new ApiResponse<dynamic>
-                    {
-                        Status = "NotFound",
-                        Message = "Transaction not found",
-                        Data = new { }
-                    });
-                }
-                return Ok(new ApiResponse<Transaction>
-                {
-                    Status = "success",
-                    Data = transaction
-                });
-            }
-            catch (ValidateErrorException ex)
-            {
-                return BadRequest(new ApiResponse<dynamic>
-                {
-                    Status = "ValidationError",
-                    Error = new ApiError { Code = "", Details = ex.Message },
-                    Message = ex.Message
-                });
-            }
-            catch (System.Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<dynamic>
-                {
-                    Status = "error",
-                    Message = "An unexpected error occurred.",
-                    Error = new ApiError { Code = "", Details = ex.Message }
-                });
-            }
-        }*/
 
         [HttpGet("customer/{customerId}")]
         public async Task<IActionResult> GetTransactionsByCustomerId(string customerId)

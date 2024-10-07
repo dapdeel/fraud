@@ -91,7 +91,6 @@ public class ObservatoryService : IObservatoryService
     }
 
 
-
     public async Task AcceptInvite(int observatoryId, string userId)
     {
         var userObservatory = await _context.UserObservatories

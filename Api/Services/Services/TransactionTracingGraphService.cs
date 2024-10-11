@@ -2,6 +2,7 @@ using Api.CustomException;
 using Api.Data;
 using Api.Entity;
 using Api.Interfaces;
+using Api.Migrations;
 using Api.Models;
 using Api.Services.Interfaces;
 using Gremlin.Net.Structure;
@@ -96,6 +97,33 @@ public class TransactionTracingGraphService : ITransactionTracingGraphService
 
         return response;
     }
+    public TransactionDocument GetTransactionToFlag(string observatoryTag, string transactionId)
+    {
+        var elasticClient = _elasticSearchService.connect();
+
+        var transactionResponse = elasticClient.Search<TransactionDocument>(s => s
+            .Query(q => q
+                .Bool(b => b
+                    .Filter(f => f
+                        .Term(t => t.Field(doc => doc.Indexed).Value(true))
+                        && f.Match(m => m.Field(doc => doc.observatoryTag).Query(observatoryTag))
+                        && f.Term(t => t.Field(doc => doc.TransactionId.Suffix("keyword")).Value(transactionId))
+                    )
+                )
+            )
+        );
+        if (!transactionResponse.IsValid || transactionResponse.Documents.Count == 0)
+        {
+            throw new ValidateErrorException("This transaction does not exist, kindly try again.");
+        }
+
+        var transaction = transactionResponse.Documents.FirstOrDefault();
+        return transaction;
+
+    }
+
+
+
     private IDictionary<dynamic, dynamic> GetAccountDocuments(string[] accountIds, IElasticClient elasticClient)
     {
         var accountDocuments = new Dictionary<dynamic, dynamic>();

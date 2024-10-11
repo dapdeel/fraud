@@ -15,6 +15,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Hangfire.Dashboard;
 using Amazon.S3;
+using Api.Services.Services;
 
 
 
@@ -164,6 +165,7 @@ void AddServices(WebApplicationBuilder builder)
     builder.Services.AddScoped<IAccountService, AccountService>();
     builder.Services.AddScoped<ITransactionTracingGraphService, TransactionTracingGraphService>();
     builder.Services.AddScoped<IElasticSearchService, ElasticSearchService>();
+    builder.Services.AddScoped<IFlaggingService, FlaggingService>();
     builder.Services.AddLogging();
 
     builder.Services.AddHangfire(config =>

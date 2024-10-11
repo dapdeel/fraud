@@ -5,6 +5,7 @@ public interface ITransactionTracingGraphService
 {
     public TransactionGraphDetails GetTransaction(int ObservatoryId, string transactionId);
     public TransactionGraphDetails GetTransactionAsync(string ObservatoryTag, string TransactionId);
+    public TransactionDocument GetTransactionToFlag(string observatoryTag, string transactionId);
     public TransactionGraphDetails NodeDetails(long NodeId);
     public TransactionGraphDetails GetNode(int ObservatoryId, int NodeId);
     public List<TransactionGraphDetails> GetTransactions(string ObservatoryTag, DateTime TransactionDate, int page, int batch);

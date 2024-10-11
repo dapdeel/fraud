@@ -146,6 +146,7 @@ public class AccountService : IAccountService
         {
             AccountId = accountDocument.AccountId,
             AccountNumber = accountDocument.AccountNumber,
+            ObservatoryTag= accountDocument.ObservatoryTag,
             AccountBalance = accountDocument.AccountBalance,
             FullName = customerDocument.FullName ?? "Unknown",
             Email = customerDocument.Email ?? "Unknown",

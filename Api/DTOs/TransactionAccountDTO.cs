@@ -26,6 +26,7 @@
     {
         public string AccountId { get; set; }
         public string AccountNumber { get; set; }
+        public string ObservatoryTag { get; set; }
         public float? AccountBalance { get; set; }
         public string FullName { get; set; }
         public string? Email { get; set; }

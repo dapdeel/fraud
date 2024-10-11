@@ -263,7 +263,7 @@ public class AccountService : IAccountService
                         && f.Term(t => t.Field("document.keyword").Value("Transfered"))
                         && f.Term(t => t.Field("from.keyword").Value(debitAccountId))
                         && f.Term(t => t.Field("to.keyword").Value(creditAccountId))
-                    )
+                  )
                 )
             )
         );

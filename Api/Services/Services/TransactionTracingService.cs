@@ -28,6 +28,12 @@ namespace Api.Services.TransactionTracing
             return _transactionTracingGraphService.GetTransactions(ObservatoryId, fromDate, pageNumber, batchSize);
         }
 
+
+        public List<TransactionGraphDetails> GetAllTransactionsWithinDateRange(string observatoryTag, DateTime startDate, DateTime endDate, int pageNumber, int batch)
+        {
+            return _transactionTracingGraphService.GetTransactionsWithinDateRange(observatoryTag, startDate,endDate, pageNumber, batch);
+        }
+
         public async Task<decimal> GetTotalAmountLast30Days(string accountNumber)
         {
             return await _context.Transactions
@@ -112,6 +118,11 @@ namespace Api.Services.TransactionTracing
         public long GetTransactionCount(string ObservatoryId, DateTime dateTime)
         {
            return  _transactionTracingGraphService.GetTransactionCount(ObservatoryId,dateTime);
+        }
+
+        public long GetTransactionWithinDateRangeCount(string observatoryTag, DateTime startDate, DateTime endDate)
+        {
+            return _transactionTracingGraphService.GetTransactionWithinDateRangeCount(observatoryTag, startDate, endDate);
         }
 
         public List<HourlyTransactionCount> GetDailyTransactionCounts(string observatoryId, DateTime transactionDate)

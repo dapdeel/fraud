@@ -126,7 +126,7 @@ namespace Api.Services.Services
                 AccountNumber = account.AccountNumber,
                 AccountId = account.AccountId,
                 ObservatoryTag= account.ObservatoryTag,
-                AccountBalance = account.AccountBalance,
+                AccountBalance = account.AccountBalance,  
                 FullName = account.FullName,
                 Phone = account.Phone,
                 Email = account.Email,

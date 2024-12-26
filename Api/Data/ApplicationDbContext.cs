@@ -1,5 +1,6 @@
 ﻿namespace Api.Data
 {
+    using Api.DTOs;
     using Api.Entity;
     using Api.Models;
     using Gremlin.Net.Process.Traversal;
@@ -22,7 +23,10 @@
         public DbSet<TransactionFileDocument> TransactionFileDocument {get;set;} 
         public DbSet<TransactionProfile> TransactionProfiles { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
-
+        public DbSet<BlacklistedAccount> BlacklistedAccounts { get; set; }
+        public DbSet<SuspiciousAccount> SuspiciousAccounts { get; set; }
+        public DbSet<BlacklistedTransaction> BlacklistedTransactions { get; set; }
+        public DbSet<SuspiciousTransaction> SuspiciousTransactions { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

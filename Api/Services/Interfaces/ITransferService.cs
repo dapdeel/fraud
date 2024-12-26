@@ -1,3 +1,4 @@
+using Api.DTOs;
 using Api.Models;
 
 public interface ITransferService
@@ -6,4 +7,6 @@ public interface ITransferService
     public Task<string> UploadAndIngest(string ObservatoryId, IFormFile file);
     public Task<bool> DownloadFileAndIngest(FileData data);
      public Task<bool> CompleteIngestion();
+    Task<FraudAnalysisResult> Analyze(TransactionTransferRequest request);
+    
 }

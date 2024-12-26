@@ -17,6 +17,8 @@ using Nest;
 using System.Text;
 using Hangfire;
 using Api.Migrations;
+using System;
+using Api.DTOs;
 
 public class TransferService : ITransferService
 {
@@ -31,7 +33,7 @@ public class TransferService : ITransferService
     private ITransactionIngestGraphService _graphIngestService;
     private int maxSizeInBytes = 50 * 1024 * 1024;
     private ElasticClient _Client;
-
+    private readonly Random _random = new Random();
     public TransferService(IGraphService graphService, ApplicationDbContext context,
     ITransactionIngestGraphService TransactionGraphService,
     IQueuePublisherService queuePublisherService, IConfiguration configuration,
@@ -579,4 +581,24 @@ public class TransferService : ITransferService
         }
         return false;
     }
+
+    public async Task<FraudAnalysisResult> Analyze(TransactionTransferRequest request)
+    {
+        await Task.Delay(500);
+
+        return new FraudAnalysisResult
+        {
+            FraudScore = GenerateRandomScore(),
+            InfluentialScore = GenerateRandomScore(),
+            BlacklistScore = GenerateRandomScore(),
+            AnomalyScore = GenerateRandomScore()
+        };
+    }
+
+    private double GenerateRandomScore()
+    {
+        return Math.Round(_random.NextDouble(), 1);
+    }
 }
+
+

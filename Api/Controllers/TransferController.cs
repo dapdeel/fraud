@@ -83,6 +83,33 @@ public class TransferController : ControllerBase
         }
     }
 
+
+    [HttpPost("analyze")]
+    public async Task<IActionResult> Analyze(TransactionTransferRequest request)
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var response = await _service.Analyze(request);
+
+            return Ok(new ApiResponse<object>
+            {
+                Status = "success",
+                Message = "Successfully Added Record",
+                Data = response
+            });
+        }
+        catch (ValidateErrorException Exception)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = Exception.Message },
+                Message = Exception.Message
+            });
+        }
+    }
+
     [HttpPost("UploadAndIngest")]
     public async Task<IActionResult> UploadIngest([FromForm] UploadIngestRequest request, [FromForm] IFormFile file)
     {

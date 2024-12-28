@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 namespace Api.Models;
 public class Observatory
 {
+    [JsonIgnore]
     public int Id { get; set; }
     public required string ObservatoryTag { get; set; }
     [Required]
@@ -23,11 +24,15 @@ public class Observatory
     public bool IsSetup { get; set; }
 
     public bool UseDefault { get; set; }
-
+ [JsonIgnore]
     public string? GraphHost { get; set; }
+     [JsonIgnore]
     public string? GraphDatabase { get; set; }
+     [JsonIgnore]
     public string? GraphUser { get; set; }
+     [JsonIgnore]
     public string? GraphPassword { get; set; }
+     [JsonIgnore]
     public string? ElasticSearchHost { get; set; }
     public ObservatoryType? ObservatoryType { get; set; }
 

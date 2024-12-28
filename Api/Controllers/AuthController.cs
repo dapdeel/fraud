@@ -86,12 +86,61 @@ namespace Api.Controllers
             }
         }
 
+        [HttpPost("authorize")]
+        public async Task<IActionResult> Authorize(AppLoginDTO model)
+        {
+            try
+            {
+                var dto = new LoginDTO
+                {
+                    Username = model.AppKey,
+                    Password = model.AppSecret
+                };
+                var result = await _authService.LoginAsync(dto);
+                if (!result.Success)
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Status = "error",
+                        Message = "Login failed",
+                        Error = new ApiError
+                        {
+                            Code = "LOGIN_FAILED",
+                            Details = string.Join(", ", result.Errors.Select(e => e.Description))
+                        }
+                    });
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    Status = "success",
+                    Message = "Login successful",
+                    Data = new { result.Token, result.RefreshToken }
+                });
+            }
+            catch (Exception Exception)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Status = "Error",
+                    Message = Exception.Message,
+                    Error = new ApiError
+                    {
+                        Code = "LOGIN_FAILED",
+                        Details = string.Join(", ", Exception.InnerException.ToString())
+                    }
+                });
+            }
+        }
+
+
+
         [HttpPost("logout")]
         public async Task<IActionResult> Logout(LogoutDTO model)
         {
             try
             {
-                await _authService.LogoutAsync(model.UserId); 
+                await _authService.LogoutAsync(model.UserId);
 
                 return Ok(new ApiResponse<object>
                 {
@@ -100,7 +149,7 @@ namespace Api.Controllers
                     Data = null
                 });
             }
-            catch (ValidateErrorException ex) 
+            catch (ValidateErrorException ex)
             {
                 return BadRequest(new ApiResponse<object>
                 {
@@ -113,7 +162,7 @@ namespace Api.Controllers
                     }
                 });
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 return BadRequest(new ApiResponse<object>
                 {

@@ -203,6 +203,19 @@ public class ObservatoryService : IObservatoryService
             .FirstOrDefaultAsync(o => o.ObservatoryTag == id);
         return observatory;
     }
+  public async Task<List<ObservatoryHostDTO>> GetHosts()
+    {
+        /*var userObservatory = _context.UserObservatories
+            .Where(uo => uo.ObservatoryTag == id && uo.UserId == userId && uo.Status == Status.Member)
+            .FirstOrDefault();
+        if (userObservatory == null)
+        {
+            throw new ValidateErrorException("You are not a member of this observatory.");
+        }*/
+        var observatories = await _context.Observatories.Where(o => o.Live == true).ToListAsync();
+        var result = new List<Observatory
+        return observatory;
+    }
 
 
     public async Task<List<Observatory>> GetObservatoriesByUserId(string userId)

@@ -69,6 +69,30 @@ public class ObservatoryController : ControllerBase
         }
     }
 
+ [HttpGet("GetHosts")]
+    public async Task<IActionResult> GetHosts()
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var response = await _service.GetHosts();
+            return Ok(new ApiResponse<dynamic>
+            {
+                Status = "success",
+                Data = response
+            });
+        }
+        catch (ValidateErrorException Exception)
+        {
+            return BadRequest(new ApiResponse<dynamic>
+            {
+                Status = "ValidationError",
+                Error = new ApiError { Code = "", Details = Exception.Message },
+                Message = Exception.Message
+            });
+        }
+    }
+
     [HttpPost("Invite")]
     public async Task<IActionResult> Invite([FromBody] InvitationRequest request, string adminUserId)
     {

@@ -10,12 +10,14 @@ namespace Api.Services.Interfaces
         Task<Observatory?> Add(ObservatoryRequest request, string userId);
         Task<Observatory?> Get(string id, string userId);
 
+        Task<ObservatoryHostDTO?> GetHosts();
+
 
         Task AcceptInvite(int userObservatoryId, string userId);
         Task RejectInvite(int userObservatoryId, string userId);
         Task Invite(InvitationRequest request, string inviterUserId);
         Task<UserObservatoryStatus> CheckUserObservatoryStatus(string userId);
-        Task<List<Observatory>> GetObservatoriesByUserId( string userId);
+        Task<List<Observatory>> GetObservatoriesByUserId(string userId);
         Task<List<Observatory>> GetInvitedObservatoriesByUserId(string userId);
         Task<Observatory> SwitchCurrentObservatory(string userId, int observatoryId);
         Task<Observatory?> GetCurrentObservatory(string userId);
